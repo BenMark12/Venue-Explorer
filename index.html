@@ -1371,6 +1371,8 @@ function scoreColorVar(overall) {
   return 'var(--red)';
 }
 
+let mapFitDone = false;
+
 function updateMarkers(filtered) {
   if (!hasLeaflet || !markersLayer) return;
   markersLayer.clearLayers();
@@ -1398,8 +1400,9 @@ function updateMarkers(filtered) {
   } else {
     markers.forEach(m => m.addTo(markersLayer));
   }
-  if (bounds.length > 0) {
+  if (bounds.length > 0 && !mapFitDone) {
     map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14, animate: true, duration: 500 });
+    mapFitDone = true;
   }
 }
 

@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Venue Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<style>
+:root {
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --bg: #FAFAF8;
+  --bg-card: #FFFFFF;
+  --bg-sidebar: #FFFFFF;
+  --bg-drawer: #FFFFFF;
+  --border: #E8E6E1;
+  --border-light: #F0EEE9;
+  --text-primary: #1A1A18;
+  --text-secondary: #6B6860;
+  --text-tertiary: #9B978E;
+  --accent: #C45D3E;
+  --accent-light: #FDF0EC;
+  --accent-hover: #A8472A;
+  --green: #2D8A56;
+  --green-bg: #E8F5EE;
+  --amber: #C08B2D;
+  --amber-bg: #FFF8E8;
+  --red: #C44D3E;
+  --red-bg: #FDEDEB;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.1), 0 4px 12px rgba(0,0,0,0.06);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-pill: 100px;
+  --transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --sidebar-w: 300px;
+  --drawer-w: 420px;
+  --header-h: 60px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; overflow: hidden; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── HEADER ── */
+.header {
+  height: var(--header-h);
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: relative;
+  z-index: 1000;
+}
+.header-left { display: flex; align-items: center; gap: 14px; }
+.header-logo {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+.header-logo span { color: var(--accent); }
+.header-tagline {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  border-left: 1px solid var(--border);
+  padding-left: 14px;
+  font-weight: 400;
+}
+.header-right { display: flex; align-items: center; gap: 12px; }
+.geocode-status {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: var(--border-light);
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  display: none;
+  align-items: center;
+  gap: 6px;
+}
+.geocode-status.active { display: inline-flex; }
+.geocode-spinner {
+  width: 10px; height: 10px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.result-count {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.result-count strong { color: var(--accent); font-weight: 600; }
+
+/* ── LAYOUT ── */
+.app-layout {
+  display: flex;
+  height: calc(100vh - var(--header-h));
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.filter-section {}
+.filter-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-tertiary);
+  margin-bottom: 8px;
+}
+.search-input {
+  width: 100%;
+  padding: 9px 12px 9px 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text-primary);
+  transition: border-color var(--transition), box-shadow var(--transition);
+  outline: none;
+}
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+.search-wrap {
+  position: relative;
+}
+.search-wrap svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+}
+
+/* Multi-select pills */
+.pill-group { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill-btn {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  background: var(--bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.pill-btn:hover { border-color: var(--accent); color: var(--accent); }
+.pill-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.pill-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Sliders */
+.slider-group { display: flex; flex-direction: column; gap: 12px; }
+.slider-row { display: flex; flex-direction: column; gap: 4px; }
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.slider-name { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+.slider-val {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-light);
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  min-width: 28px;
+  text-align: center;
+}
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--border);
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid #fff;
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition);
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); cursor: pointer;
+  border: 2px solid #fff; box-shadow: var(--shadow-sm);
+}
+
+.reset-btn {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 12.5px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  background: var(--bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.reset-btn:hover { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+
+/* ── MAIN AREA ── */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Tab bar */
+.tab-bar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 20px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+}
+.tab-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.tab-btn:hover { background: var(--border-light); }
+.tab-btn.active { background: var(--text-primary); color: #fff; }
+.tab-spacer { flex: 1; }
+.sort-select {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  outline: none;
+}
+.sort-select:focus { border-color: var(--accent); }
+
+/* Map */
+.map-container {
+  flex: 1;
+  position: relative;
+}
+#map { width: 100%; height: 100%; }
+.map-container.hidden { display: none; }
+
+/* List */
+.list-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+.list-container.hidden { display: none; }
+.list-container::-webkit-scrollbar { width: 6px; }
+.list-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
+
+/* Venue Card */
+.venue-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+}
+.venue-card:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.venue-card.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-light), var(--shadow-md);
+}
+.venue-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.card-name {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+.card-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.badge {
+  padding: 2px 9px;
+  border-radius: var(--radius-pill);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.badge-type { background: #EDE9FE; color: #6D28D9; }
+.badge-reason { background: #E0F2FE; color: #0369A1; }
+.badge-location { background: var(--border-light); color: var(--text-secondary); font-weight: 500; text-transform: none; }
+.card-scores { display: flex; gap: 8px; margin-bottom: 10px; }
+.score-chip {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600;
+}
+.score-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+}
+.score-green { background: var(--green); }
+.score-amber { background: var(--amber); }
+.score-red { background: var(--red); }
+.card-liked {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.card-overall {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+}
+.overall-green { background: var(--green-bg); color: var(--green); }
+.overall-amber { background: var(--amber-bg); color: var(--amber); }
+.overall-red { background: var(--red-bg); color: var(--red); }
+
+/* Empty state */
+.empty-state {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+.empty-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.empty-text {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-bottom: 16px;
+}
+.empty-reset {
+  padding: 8px 20px;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--transition);
+}
+.empty-reset:hover { background: var(--accent-hover); }
+
+/* ── DRAWER ── */
+.drawer-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.2);
+  z-index: 2000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 300ms ease;
+}
+.drawer-overlay.open { opacity: 1; pointer-events: auto; }
+
+.drawer {
+  position: fixed;
+  top: 0; right: 0;
+  width: var(--drawer-w);
+  max-width: 92vw;
+  height: 100vh;
+  background: var(--bg-drawer);
+  box-shadow: var(--shadow-lg);
+  z-index: 2001;
+  transform: translateX(100%);
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.drawer.open { transform: translateX(0); }
+.drawer::-webkit-scrollbar { width: 4px; }
+.drawer::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.drawer-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  background: var(--bg-drawer);
+  z-index: 1;
+}
+.drawer-close {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.drawer-close:hover { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+
+.drawer-body { padding: 24px; flex: 1; display: flex; flex-direction: column; gap: 20px; }
+
+.drawer-name {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+  padding-right: 40px;
+}
+.drawer-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.drawer-location {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Score bars */
+.score-breakdown { display: flex; flex-direction: column; gap: 10px; }
+.score-bar-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.score-bar-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); width: 80px; flex-shrink: 0; }
+.score-bar-track {
+  flex: 1; height: 8px;
+  background: var(--border-light);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.score-bar-val { font-size: 13px; font-weight: 700; width: 30px; text-align: right; }
+
+/* Note block */
+.note-block {
+  background: #FFFDF5;
+  border: 1px solid #F0EBD8;
+  border-radius: var(--radius-md);
+  padding: 16px;
+  position: relative;
+}
+.note-block::before {
+  content: '"';
+  font-family: var(--font-display);
+  font-size: 48px;
+  color: #E8DFC8;
+  position: absolute;
+  top: 4px;
+  left: 12px;
+  line-height: 1;
+}
+.note-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+  padding-left: 24px;
+  font-style: italic;
+}
+
+/* Venue photos */
+.drawer-photos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 6px;
+}
+.drawer-photos.has-hero {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto auto;
+}
+.drawer-photo {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  position: relative;
+  aspect-ratio: 4/3;
+  background: var(--border-light);
+}
+.drawer-photo.hero {
+  grid-column: 1 / -1;
+  aspect-ratio: 16/9;
+}
+.drawer-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 300ms ease;
+}
+.drawer-photo img.loading { opacity: 0; }
+.drawer-photo img.loaded { opacity: 1; }
+.photo-label {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+.photo-shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--border-light) 25%, #f5f3ee 50%, var(--border-light) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.photos-status {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  padding: 6px 0;
+}
+.photos-status a {
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 500;
+}
+.photos-status a:hover { text-decoration: underline; }
+
+/* Links */
+.drawer-links { display: flex; flex-direction: column; gap: 8px; }
+.drawer-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all var(--transition);
+}
+.drawer-link:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-light);
+}
+.drawer-link svg { flex-shrink: 0; }
+
+/* Map tile offline banner */
+.offline-banner {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  background: var(--amber-bg);
+  color: var(--amber);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-sm);
+  display: none;
+}
+.offline-banner.show { display: block; }
+
+/* Custom Leaflet marker */
+.custom-marker {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  transition: transform 150ms ease;
+}
+.custom-marker:hover { transform: scale(1.2); }
+.custom-marker.green { background: var(--green); }
+.custom-marker.amber { background: var(--amber); }
+.custom-marker.red { background: var(--red); }
+.custom-marker.selected {
+  transform: scale(1.3);
+  box-shadow: 0 0 0 3px rgba(196,93,62,0.3), 0 2px 8px rgba(0,0,0,0.25);
+}
+
+/* Cluster bubbles — override default MarkerCluster styles */
+.marker-cluster-custom {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.marker-cluster-custom div {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.22);
+  transition: transform 150ms ease;
+  cursor: pointer;
+}
+.marker-cluster-custom div:hover { transform: scale(1.12); }
+.cluster-small div  { background: var(--accent); width: 34px; height: 34px; font-size: 12px; }
+.cluster-medium div { background: var(--amber); width: 40px; height: 40px; font-size: 13px; }
+.cluster-large div  { background: var(--red); width: 46px; height: 46px; font-size: 14px; }
+
+/* hide default MarkerCluster ring styles */
+.marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background: none !important; }
+.marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div { background: none !important; }
+
+.leaflet-popup-content-wrapper {
+  border-radius: var(--radius-md) !important;
+  box-shadow: var(--shadow-md) !important;
+  padding: 0 !important;
+}
+.leaflet-popup-content {
+  margin: 12px 16px !important;
+  font-family: var(--font-body) !important;
+}
+.popup-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+}
+.popup-loc { font-size: 11px; color: var(--text-tertiary); }
+.popup-score { font-size: 12px; font-weight: 700; margin-top: 2px; }
+
+/* Section label inside drawer */
+.drawer-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-tertiary);
+  margin-bottom: -8px;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .header-tagline { display: none; }
+  --drawer-w: 100vw;
+  .drawer { width: 100vw; }
+  .list-container { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo">Venue<span>.</span></div>
+    <div class="header-tagline">Find your best meals & drinks by mood and score</div>
+  </div>
+  <div class="header-right">
+    <div id="geocodeStatus" class="geocode-status">
+      <div class="geocode-spinner"></div>
+      <span id="geocodeText">Geocoding…</span>
+    </div>
+    <div class="result-count" id="resultCount">Showing <strong>0</strong> of <strong>0</strong></div>
+  </div>
+</header>
+
+<!-- APP -->
+<div class="app-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" role="region" aria-label="Filters">
+    <!-- Search -->
+    <div class="filter-section">
+      <div class="filter-label">Search</div>
+      <div class="search-wrap">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" class="search-input" id="searchInput" placeholder="Name or location…" aria-label="Search venues by name or location">
+      </div>
+    </div>
+
+    <!-- Type -->
+    <div class="filter-section">
+      <div class="filter-label">Type</div>
+      <div class="pill-group" id="typeFilters"></div>
+    </div>
+
+    <!-- Reason -->
+    <div class="filter-section">
+      <div class="filter-label">Reason</div>
+      <div class="pill-group" id="reasonFilters"></div>
+    </div>
+
+    <!-- Score sliders -->
+    <div class="filter-section">
+      <div class="filter-label">Minimum Scores</div>
+      <div class="slider-group">
+        <div class="slider-row">
+          <div class="slider-header"><span class="slider-name">Food / Drinks</span><span class="slider-val" id="foodVal">0</span></div>
+          <input type="range" id="foodSlider" min="0" max="10" step="1" value="0" aria-label="Minimum Food/Drinks score">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header"><span class="slider-name">Service</span><span class="slider-val" id="serviceVal">0</span></div>
+          <input type="range" id="serviceSlider" min="0" max="10" step="1" value="0" aria-label="Minimum Service score">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header"><span class="slider-name">Experience</span><span class="slider-val" id="experienceVal">0</span></div>
+          <input type="range" id="experienceSlider" min="0" max="10" step="1" value="0" aria-label="Minimum Experience score">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header"><span class="slider-name">Overall</span><span class="slider-val" id="overallVal">0</span></div>
+          <input type="range" id="overallSlider" min="0" max="10" step="0.5" value="0" aria-label="Minimum Overall score">
+        </div>
+      </div>
+    </div>
+
+    <!-- Reset -->
+    <button class="reset-btn" id="resetBtn" aria-label="Reset all filters">Reset all filters</button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-area">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="map" aria-label="Map view">Map</button>
+      <button class="tab-btn" data-tab="list" aria-label="List view">List</button>
+      <div class="tab-spacer"></div>
+      <select class="sort-select" id="sortSelect" aria-label="Sort venues">
+        <option value="overall">Sort: Overall</option>
+        <option value="food">Sort: Food/Drinks</option>
+        <option value="service">Sort: Service</option>
+        <option value="experience">Sort: Experience</option>
+      </select>
+    </div>
+    <div class="map-container" id="mapContainer">
+      <div id="map"></div>
+      <div class="offline-banner" id="offlineBanner">Map tiles may not load offline — list still works.</div>
+    </div>
+    <div class="list-container hidden" id="listContainer"></div>
+  </main>
+</div>
+
+<!-- DRAWER -->
+<div class="drawer-overlay" id="drawerOverlay"></div>
+<div class="drawer" id="drawer" role="dialog" aria-label="Venue details">
+  <div class="drawer-header">
+    <div class="drawer-name" id="drawerName"></div>
+    <button class="drawer-close" id="drawerClose" aria-label="Close details">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// ▸ CONFIGURATION — Set your Google Places API key here
+// ═══════════════════════════════════════════════════════════
+const GOOGLE_PLACES_API_KEY = 'AIzaSyDMTy5EQ8Wje-PfziAzfCpcQfFilqLlRZw';
+// ═══════════════════════════════════════════════════════════
+
+// ── GOOGLE PLACES PHOTO SYSTEM ──
+let placesService = null;
+let placesReady = false;
+
+const photoCache = (() => {
+  try { return JSON.parse(localStorage.getItem('venuePhotoCache') || '{}'); } catch(e) { return {}; }
+})();
+function savePhotoCache() {
+  try { localStorage.setItem('venuePhotoCache', JSON.stringify(photoCache)); } catch(e) {}
+}
+
+function initPlacesService() {
+  if (!GOOGLE_PLACES_API_KEY) return;
+  // Create a hidden map div for PlacesService (required by Google)
+  let dummy = document.getElementById('__places_dummy');
+  if (!dummy) {
+    dummy = document.createElement('div');
+    dummy.id = '__places_dummy';
+    dummy.style.display = 'none';
+    document.body.appendChild(dummy);
+  }
+  const dummyMap = new google.maps.Map(dummy, { center: {lat:0,lng:0}, zoom:1 });
+  placesService = new google.maps.places.PlacesService(dummyMap);
+  placesReady = true;
+  console.log('[Venue Explorer] Google Places API ready — prefetching photos…');
+  prefetchAllPhotos();
+}
+
+function searchPlacePhotos(venueName, location) {
+  return new Promise((resolve) => {
+    if (!placesService) { resolve(null); return; }
+    const query = venueName + ' ' + location;
+    placesService.findPlaceFromQuery({
+      query: query,
+      fields: ['photos', 'name', 'place_id']
+    }, (results, status) => {
+      if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
+        const place = results[0];
+        if (place.photos && place.photos.length > 0) {
+          const urls = place.photos.slice(0, 5).map(p =>
+            p.getUrl({ maxWidth: 600, maxHeight: 450 })
+          );
+          resolve(urls);
+        } else {
+          resolve(null);
+        }
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
+async function getVenuePhotos(venue) {
+  const cacheKey = venue.name + '|' + venue.location;
+  if (photoCache[cacheKey]) return photoCache[cacheKey];
+  if (!placesReady) return null;
+
+  const urls = await searchPlacePhotos(venue.name, venue.location);
+  if (urls && urls.length > 0) {
+    photoCache[cacheKey] = urls;
+    savePhotoCache();
+  }
+  return urls;
+}
+
+async function prefetchAllPhotos() {
+  if (!placesReady) return;
+  const statusEl = document.getElementById('geocodeStatus');
+  const textEl = document.getElementById('geocodeText');
+  const uncached = venues.filter(v => !photoCache[v.name + '|' + v.location]);
+  if (uncached.length === 0) return;
+
+  statusEl.classList.add('active');
+  let done = 0;
+  for (const v of uncached) {
+    done++;
+    textEl.textContent = 'Fetching photos ' + done + '/' + uncached.length + '…';
+    await getVenuePhotos(v);
+    await new Promise(r => setTimeout(r, 350)); // rate-limit
+  }
+  statusEl.classList.remove('active');
+  console.log('[Venue Explorer] Photo prefetch complete');
+}
+// ── CSV DATA ──
+const CSV_RAW = `Name,Type,Location,Reason,Food/Drinks,Service,Experience,What I liked
+A Wong,Fine Dining Restaurant (Tasting Menu),Pimlico,Special Occasion,10,8,8,"Incredible selection of dishes in the tasting menu, amazing variety and a phenomenal wine list. Setting was relaxed and not over the top, not too pretentious."
+Iris,Fine Dining Restaurant (Tasting Menu),Norway,Travelled Specifically,9,10,10,"Unbelievable location in the fjord, stunning journey and worth a trip specifically, remote, serene and scenic. Food was great with a fantastic focus on local produce."
+Black Swan,Fine Dining Restaurant (Tasting Menu),Oldstead,Travelled Specifically,9,9,10,"Great scenic location in a small north yorkshire village, fantastic focus on local produce and local staff, great menu based on seasonal produce. Great building in a converted pub and came with accomodation in the village which was great."
+Da Terra,Fine Dining Restaurant (Tasting Menu),Bethnal Green,Special Occasion,8,10,8,"Relaxed east london restaurant, fantastic food and great service with an open kitchen and the chefs presenting their dishes."
+Aulis,Fine Dining Restaurant (Tasting Menu),Soho,Special Occasion,8,10,9,"Chefs table experience, great service and ability to interact with the chefs in an intimate soho location."
+Sketch,Fine Dining Restaurant (Tasting Menu),Mayfair,Special Occasion,8,10,9,"Grand dining room with impeccable service in a mayfair location, amazing selection of food, particularly loved the grand desert."
+Quadri,Fine Dining Restaurant (Tasting Menu),Venice,Special Occasion,7,9,9,"Amazing location in a historic building off st marks square, strong food selection based on seasonal produce and good service."
+Hide,Fine Dining Restaurant (Tasting Menu),Mayfair,Nice Occasion,8,9,7,"Relaxed dining room, phenomenal wine list, strong menu"
+Blossom,Fine Dining Restaurant (Tasting Menu),Malaga,Nice Occasion,7,9,8,"Small, intimate setting with a good menu"
+CTC Urban Gastronomy,Fine Dining Restaurant (Tasting Menu),Athens,Nice Occasion,7,7,7,"Interesting and experimental selection of dishes"
+Luca,Fine Dining Restaurant (A La Carte),Farringdon,Nice Occasion,7,7,6,"Simple, relaxed amazing quality italian food"
+Behind,Fine Dining Restaurant (Tasting Menu),Bethnal Green,Nice Occasion,6,7,6,"Large, chefs table style food with strong seafood focus"
+Aniar,Fine Dining Restaurant (Tasting Menu),Galway,Nice Occasion,6,6,5,"Big focus on local produce and an interesting wine pairing"
+Umu,Fine Dining Restaurant (Tasting Menu),Mayfair,Nice Occasion,6,7,5,"High quality cooking but a bit samey"
+Galvin La Chappelle,Fine Dining Restaurant (A La Carte),City,Nice Occasion,6,6,6,"Good traditional dishes in a formal setting"
+Mountain,Fine Dining Restaurant (A La Carte),Soho,Nice Regular,7,6,7,"Relaxed chilled open fire cooking, amazing vibes and amazing flavours, keep going back"
+Oma,Fine Dining Restaurant (A La Carte),London,Nice Regular,7,6,8,"Relaxed chilled open fire cooking, sat and counter to watch them cook, amazing vibes and amazing flavours, keep going back"
+Kiln,Casual Dining,Soho,Nice Regular,6,5,8,"Relaxed soho barbecue spot for great small plates"
+Les 2 Garcons,Casual Dining,Crouch End,Nice Regular,6,6,7,"Traditional French done well, quaint vibes"
+Josette,Casual Dining,Farringdon,Nice Regular,6,5,6,"Traditional French done well, quaint vibes"
+Canalha,Casual Dining,Lisbon,Nice Regular,6,7,6,"Strong local dishes end to end"
+Lina Stores,Casual Dining,City,Casual Regular,5,4,5,"Great pasta"
+Zabala,Casual Dining,Vitoria Gastiez,Nice Regular,6,5,5,"Very good fish and wine"
+Los Feuros,Casual Dining,Bilbao,Nice Regular,5,5,6,"Good tasting menu of local fare"
+Oxamoco,Casual Dining,Greenpoint,Nice Regular,8,7,6,"Amazing mexican food in a relaxed setting"
+Le Coin Fracais,Fine Dining Restaurant (Tasting Menu),Franschoek,Nice Occasion,8,8,7,"fantastic tasting menu of south african local foods"
+Smoking Goat,Casual Dining,Shoreditch,Nice Regular,5,5,6,"Relaxed shoreditch barbecue spot for great small plates"
+Shankeys,Casual Dining,Hackney,Nice Regular,5,7,7,"Great cocktails and good mix of irish and indian foods"
+Skua,Casual Dining,Edinburgh,Nice Regular,7,7,6,"Amazing small plates in a relaxed basement and great cocktails"
+Berenjak,Casual Dining,Borough,Nice Regular,6,5,6,"Interesting persian food"
+Singburi,Casual Dining,Shoreditch,Nice Regular,6,5,5,"Authentic and tasty thai food"
+Le'Escargot,Casual Dining,Soho,Nice Regular,6,6,7,"Traditional french done well in a nice soho setting"
+Paradise,Casual Dining,Soho,Nice Regular,7,6,6,"Really interesting sri lankan dishes"
+My Neighbour the Dumplings,Casual Dining,Victoria Park,Casual Regular,5,5,7,"Relaxed, good cocktails and great dumplings"
+Brat,Casual Dining,Shoreditch,Nice Regular,5,4,4,"Decent food, poor service and poor lcoation"
+Elis,Casual Dining,Bethnal Green,Casual Regular,6,7,6,"Relaxed but high quality cooking"
+Elliots,Casual Dining,Bethnal Green,Nice Regular,6,6,6,"Delightful small places european joint in hackeny"
+La Merenda,Casual Dining,Nice,Casual Regular,5,7,8,"Great local french spot for traditional food in an intimate setting"
+Tatar Bunar,Casual Dining,Shoreditch,Casual Regular,7,6,6,"Very unique Ukranian Spot"
+Terre Bar De Vin,Wine Bar & Food,Paris,Nice Regular,7,9,9,"Wine bar, great vibes in a tiny setting, sat at counter and watched the chefs work, awesome wine and small plates"
+Bodegas Castañeda,Wine Bar & Food,Granada,Casual Regular,6,6,10,"Amazing local tapas spot doing authentique wines with accompanying tapas"
+Himkok,Cocktail Bar,Oslo,Special Occasion,10,10,10,"Best cocktail ive ever drank with impeccable service in a cool oslo lcoation"
+Satans Whiskers,Cocktail Bar,London,Nice Occasion,9,10,10,"Fantastic dive bar vibes but some of the best tasting cocktails"
+Dram,Cocktail Bar,London,Nice Occasion,8,7,7,"Not the best vibes but good cocktails"
+Bruno,Wine Bar,London,Date Night,7,7,7,"Beautiful intimate setting serving great wine and small plates"
+The Coral Room,Cocktail Bar,London,Date Night,7,8,6,"Grand hotel setting lacked vibe but did good cocktails"
+Lucys Flower Shop,Cocktail Bar,Stockholm,Special Occasion,9,9,10,"Hidden underground lcoations with a simple but knockout cocktail menu"
+Svanen,Cocktail Bar,Oslo,Special Occasion,8,9,8,"Funky location in a former chemists with great quality drinks and good service"
+Sin + Tax,Cocktail Bar,Johannesburg,Nice Occasion,8,8,8,"Good drinks and good casual food with an outdoor location and a chilled vibe"
+Gordons,Wine Bar,London,Nice Occasion,8,9,10,"Amazing location in the wine cellars and a great wine list, truly one of a kind"
+Authentique,Wine Bar,London,Nice Regular,6,7,6,"Fun local wine bar"
+St Swythns Wine Bar,Wine Bar,London,Nice Occasion,7,9,9,"incredible wine list and a fancy setting"
+The Booking Office,Cocktail Bar,London,Nice Regular,6,7,6,"grand setting with good drinks"
+Decimo,Cocktail Bar,London,Nice Regular,6,7,6,"Fun late night venue"`;
+
+// ── PARSE CSV ──
+function parseCSV(csv) {
+  const lines = csv.split('\n');
+  const headers = lines[0].split(',');
+  const data = [];
+  let i = 1;
+  while (i < lines.length) {
+    let line = lines[i].trim();
+    if (!line) { i++; continue; }
+    // Handle multi-line quoted fields
+    while ((line.match(/"/g) || []).length % 2 !== 0 && i + 1 < lines.length) {
+      i++;
+      line += '\n' + lines[i];
+    }
+    const fields = [];
+    let field = '';
+    let inQuotes = false;
+    for (let c = 0; c < line.length; c++) {
+      const ch = line[c];
+      if (ch === '"') {
+        if (inQuotes && line[c + 1] === '"') { field += '"'; c++; }
+        else { inQuotes = !inQuotes; }
+      }
+      else if (ch === ',' && !inQuotes) { fields.push(field.trim()); field = ''; }
+      else { field += ch; }
+    }
+    fields.push(field.trim());
+    if (fields.length >= 8) {
+      const food = parseInt(fields[4]) || 0;
+      const service = parseInt(fields[5]) || 0;
+      const experience = parseInt(fields[6]) || 0;
+      const overall = Math.round(((food + service + experience) / 3) * 10) / 10;
+      data.push({
+        name: fields[0],
+        type: fields[1],
+        location: fields[2],
+        reason: fields[3],
+        food, service, experience, overall,
+        liked: fields[7] || '',
+      });
+    }
+    i++;
+  }
+  return data;
+}
+
+const venues = parseCSV(CSV_RAW);
+
+// ── SHORT TYPE LABELS ──
+function shortType(t) {
+  if (t.includes('Tasting')) return 'Fine Dining (Tasting)';
+  if (t.includes('A La Carte')) return 'Fine Dining (A La Carte)';
+  if (t.includes('Wine Bar & Food')) return 'Wine Bar & Food';
+  if (t.includes('Wine Bar')) return 'Wine Bar';
+  if (t.includes('Cocktail')) return 'Cocktail Bar';
+  if (t.includes('Casual')) return 'Casual Dining';
+  return t;
+}
+
+// ── FALLBACK COORDINATES ──
+const FALLBACK_COORDS = {
+  'soho': [51.5137, -0.1370],
+  'mayfair': [51.5095, -0.1480],
+  'shoreditch': [51.5255, -0.0778],
+  'bethnal green': [51.5270, -0.0555],
+  'farringdon': [51.5200, -0.1050],
+  'borough': [51.5013, -0.0895],
+  'hackney': [51.5450, -0.0553],
+  'crouch end': [51.5832, -0.1218],
+  'victoria park': [51.5369, -0.0388],
+  'city': [51.5155, -0.0922],
+  'pimlico': [51.4893, -0.1334],
+  'london': [51.5074, -0.1278],
+  'oslo': [59.9139, 10.7522],
+  'stockholm': [59.3293, 18.0686],
+  'venice': [45.4408, 12.3155],
+  'malaga': [36.7213, -4.4214],
+  'athens': [37.9838, 23.7275],
+  'lisbon': [38.7223, -9.1393],
+  'paris': [48.8566, 2.3522],
+  'edinburgh': [55.9533, -3.1883],
+  'bilbao': [43.2630, -2.9350],
+  'granada': [37.1773, -3.5986],
+  'galway': [53.2707, -9.0568],
+  'johannesburg': [(-26.2041), 28.0473],
+  'franschoek': [-33.8691, 19.1182],
+  'franschhoek': [-33.8691, 19.1182],
+  'greenpoint': [40.7282, -73.9574],
+  'nice': [43.7102, 7.2620],
+  'norway': [61.0, 8.0],
+  'oldstead': [54.2209, -1.1811],
+  'vitoria gastiez': [42.8467, -2.6726],
+};
+
+// ── GEOCODING ──
+const geocodeCache = (() => {
+  try { return JSON.parse(localStorage.getItem('venueGeoCache') || '{}'); } catch(e) { return {}; }
+})();
+
+function saveGeoCache() {
+  try { localStorage.setItem('venueGeoCache', JSON.stringify(geocodeCache)); } catch(e) {}
+}
+
+function getFallback(loc) {
+  const key = loc.toLowerCase().trim();
+  if (FALLBACK_COORDS[key]) return FALLBACK_COORDS[key];
+  for (const [k, v] of Object.entries(FALLBACK_COORDS)) {
+    if (key.includes(k) || k.includes(key)) return v;
+  }
+  return null;
+}
+
+async function geocodeVenue(venue) {
+  const key = `${venue.name}, ${venue.location}`;
+  if (geocodeCache[key]) return geocodeCache[key];
+
+  const fb = getFallback(venue.location);
+
+  try {
+    const q = encodeURIComponent(`${venue.name}, ${venue.location}`);
+    const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
+      headers: { 'User-Agent': 'VenueExplorerMockup/1.0' }
+    });
+    const data = await resp.json();
+    if (data && data.length > 0) {
+      const coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      geocodeCache[key] = coords;
+      saveGeoCache();
+      return coords;
+    }
+  } catch(e) {}
+
+  // Try just location
+  const locKey = venue.location;
+  if (geocodeCache[locKey]) return geocodeCache[locKey];
+  try {
+    const q2 = encodeURIComponent(venue.location);
+    const resp2 = await fetch(`https://nominatim.openstreetmap.org/search?q=${q2}&format=json&limit=1`, {
+      headers: { 'User-Agent': 'VenueExplorerMockup/1.0' }
+    });
+    const data2 = await resp2.json();
+    if (data2 && data2.length > 0) {
+      const coords = [parseFloat(data2[0].lat), parseFloat(data2[0].lon)];
+      geocodeCache[locKey] = coords;
+      saveGeoCache();
+      return coords;
+    }
+  } catch(e) {}
+
+  if (fb) {
+    // Add a little jitter so markers don't stack perfectly
+    const jitter = () => (Math.random() - 0.5) * 0.004;
+    const coords = [fb[0] + jitter(), fb[1] + jitter()];
+    geocodeCache[key] = coords;
+    saveGeoCache();
+    return coords;
+  }
+
+  // Unknown cluster
+  const unk = [51.48, -0.18 + Math.random() * 0.02];
+  geocodeCache[key] = unk;
+  saveGeoCache();
+  return unk;
+}
+
+async function geocodeAll() {
+  const statusEl = document.getElementById('geocodeStatus');
+  const textEl = document.getElementById('geocodeText');
+  let needsGeocode = venues.filter(v => !geocodeCache[`${v.name}, ${v.location}`]);
+  if (needsGeocode.length === 0) {
+    venues.forEach(v => { v.coords = geocodeCache[`${v.name}, ${v.location}`]; });
+    return;
+  }
+  statusEl.classList.add('active');
+  let done = 0;
+  for (const v of venues) {
+    const key = `${v.name}, ${v.location}`;
+    if (geocodeCache[key]) {
+      v.coords = geocodeCache[key];
+      continue;
+    }
+    textEl.textContent = `Geocoding ${++done}/${needsGeocode.length}…`;
+    v.coords = await geocodeVenue(v);
+    await new Promise(r => setTimeout(r, 1100)); // polite rate limit
+  }
+  statusEl.classList.remove('active');
+}
+
+// ── STATE ──
+const state = {
+  activeTypes: new Set(),
+  activeReasons: new Set(),
+  search: '',
+  minFood: 0,
+  minService: 0,
+  minExperience: 0,
+  minOverall: 0,
+  sort: 'overall',
+  tab: 'map',
+  selectedVenue: null,
+};
+
+// ── INIT FILTERS ──
+const types = [...new Set(venues.map(v => shortType(v.type)))];
+const reasons = [...new Set(venues.map(v => v.reason))];
+
+function renderPills(container, items, stateSet, onChange) {
+  container.innerHTML = '';
+  items.forEach(item => {
+    const btn = document.createElement('button');
+    btn.className = 'pill-btn' + (stateSet.has(item) ? ' active' : '');
+    btn.textContent = item;
+    btn.setAttribute('role', 'checkbox');
+    btn.setAttribute('aria-checked', stateSet.has(item));
+    btn.addEventListener('click', () => {
+      if (stateSet.has(item)) stateSet.delete(item); else stateSet.add(item);
+      btn.classList.toggle('active');
+      btn.setAttribute('aria-checked', stateSet.has(item));
+      onChange();
+    });
+    container.appendChild(btn);
+  });
+}
+
+renderPills(document.getElementById('typeFilters'), types, state.activeTypes, applyFilters);
+renderPills(document.getElementById('reasonFilters'), reasons, state.activeReasons, applyFilters);
+
+// Sliders
+['food', 'service', 'experience', 'overall'].forEach(key => {
+  const slider = document.getElementById(key + 'Slider');
+  const valEl = document.getElementById(key + 'Val');
+  slider.addEventListener('input', () => {
+    const v = parseFloat(slider.value);
+    if (isNaN(v) || v < 0 || v > 10) return;
+    state['min' + key.charAt(0).toUpperCase() + key.slice(1)] = v;
+    valEl.textContent = v;
+    applyFilters();
+  });
+});
+
+// Search
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  state.search = e.target.value.toLowerCase();
+  applyFilters();
+});
+
+// Sort
+document.getElementById('sortSelect').addEventListener('change', (e) => {
+  state.sort = e.target.value;
+  applyFilters();
+});
+
+// Reset
+document.getElementById('resetBtn').addEventListener('click', () => {
+  state.activeTypes.clear();
+  state.activeReasons.clear();
+  state.search = '';
+  state.minFood = 0;
+  state.minService = 0;
+  state.minExperience = 0;
+  state.minOverall = 0;
+  document.getElementById('searchInput').value = '';
+  ['food', 'service', 'experience', 'overall'].forEach(k => {
+    document.getElementById(k + 'Slider').value = 0;
+    document.getElementById(k + 'Val').textContent = '0';
+  });
+  renderPills(document.getElementById('typeFilters'), types, state.activeTypes, applyFilters);
+  renderPills(document.getElementById('reasonFilters'), reasons, state.activeReasons, applyFilters);
+  applyFilters();
+});
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.tab = btn.dataset.tab;
+    document.getElementById('mapContainer').classList.toggle('hidden', state.tab !== 'map');
+    document.getElementById('listContainer').classList.toggle('hidden', state.tab !== 'list');
+    if (state.tab === 'map' && map) map.invalidateSize();
+  });
+});
+
+// ── MAP ──
+const hasLeaflet = typeof L !== 'undefined';
+let map, markersLayer;
+
+function initMap() {
+  if (!hasLeaflet) {
+    document.getElementById('offlineBanner').classList.add('show');
+    // Auto-switch to list view when map unavailable
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('[data-tab="list"]').classList.add('active');
+    document.getElementById('mapContainer').classList.add('hidden');
+    document.getElementById('listContainer').classList.remove('hidden');
+    state.tab = 'list';
+    return;
+  }
+  map = L.map('map', { zoomControl: true, attributionControl: true }).setView([51.51, -0.12], 12);
+  try {
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 18,
+    }).addTo(map);
+    map.on('tileerror', () => {
+      document.getElementById('offlineBanner').classList.add('show');
+    });
+  } catch(e) {
+    document.getElementById('offlineBanner').classList.add('show');
+  }
+  const hasCluster = hasLeaflet && typeof L.markerClusterGroup === 'function';
+  if (hasCluster) {
+    markersLayer = L.markerClusterGroup({
+      maxClusterRadius: 45,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      animate: true,
+      animateAddingMarkers: false,
+      iconCreateFunction: function(cluster) {
+        const count = cluster.getChildCount();
+        let sizeClass = 'cluster-small';
+        let size = 40;
+        if (count >= 10) { sizeClass = 'cluster-large'; size = 52; }
+        else if (count >= 4) { sizeClass = 'cluster-medium'; size = 46; }
+        return L.divIcon({
+          html: `<div>${count}</div>`,
+          className: 'marker-cluster-custom ' + sizeClass,
+          iconSize: L.point(size, size),
+        });
+      }
+    }).addTo(map);
+  } else {
+    markersLayer = L.layerGroup().addTo(map);
+  }
+}
+initMap();
+
+const SCORE_GREEN = 8.5;
+const SCORE_AMBER = 7.0;
+
+function escapeHTML(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function scoreColor(overall) {
+  if (overall >= SCORE_GREEN) return 'green';
+  if (overall >= SCORE_AMBER) return 'amber';
+  return 'red';
+}
+function scoreColorVar(overall) {
+  if (overall >= SCORE_GREEN) return 'var(--green)';
+  if (overall >= SCORE_AMBER) return 'var(--amber)';
+  return 'var(--red)';
+}
+
+function updateMarkers(filtered) {
+  if (!hasLeaflet || !markersLayer) return;
+  markersLayer.clearLayers();
+  const bounds = [];
+  const markers = [];
+  filtered.forEach(v => {
+    if (!v.coords) return;
+    const color = scoreColor(v.overall);
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="custom-marker ${color} ${state.selectedVenue === v ? 'selected' : ''}" data-name="${v.name}"></div>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+    });
+    const marker = L.marker(v.coords, { icon });
+    marker.bindPopup(`<div class="popup-name">${escapeHTML(v.name)}</div><div class="popup-loc">${escapeHTML(v.location)}</div><div class="popup-score" style="color:${scoreColorVar(v.overall)}">${v.overall}</div>`, { closeButton: false, offset: [0, -10] });
+    marker.on('click', () => { selectVenue(v); });
+    v._marker = marker;
+    markers.push(marker);
+    bounds.push(v.coords);
+  });
+  // Batch add for cluster performance
+  if (markersLayer.addLayers) {
+    markersLayer.addLayers(markers);
+  } else {
+    markers.forEach(m => m.addTo(markersLayer));
+  }
+  if (bounds.length > 0) {
+    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14, animate: true, duration: 500 });
+  }
+}
+
+// ── LIST ──
+function renderList(filtered) {
+  const container = document.getElementById('listContainer');
+  container.innerHTML = '';
+  if (filtered.length === 0) {
+    const emptyState = document.createElement('div');
+    emptyState.className = 'empty-state';
+    emptyState.innerHTML = `
+      <div class="empty-icon">🍽️</div>
+      <div class="empty-title">No venues match your filters</div>
+      <div class="empty-text">Try adjusting your search, type, reason or score filters</div>`;
+    const emptyResetBtn = document.createElement('button');
+    emptyResetBtn.className = 'empty-reset';
+    emptyResetBtn.textContent = 'Reset filters';
+    emptyResetBtn.addEventListener('click', () => document.getElementById('resetBtn').click());
+    emptyState.appendChild(emptyResetBtn);
+    container.appendChild(emptyState);
+    return;
+  }
+  filtered.forEach(v => {
+    const card = document.createElement('div');
+    card.className = 'venue-card' + (state.selectedVenue === v ? ' selected' : '');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-label', `View details for ${v.name}`);
+    const oc = scoreColor(v.overall);
+    const ocClass = 'overall-' + oc;
+    const foodDot = 'score-' + scoreColor(v.food);
+    const svcDot = 'score-' + scoreColor(v.service);
+    const expDot = 'score-' + scoreColor(v.experience);
+    card.innerHTML = `
+      <div class="card-overall ${ocClass}">${v.overall}</div>
+      <div class="card-name">${escapeHTML(v.name)}</div>
+      <div class="card-meta">
+        <span class="badge badge-type">${escapeHTML(shortType(v.type))}</span>
+        <span class="badge badge-reason">${escapeHTML(v.reason)}</span>
+        <span class="badge badge-location">${escapeHTML(v.location)}</span>
+      </div>
+      <div class="card-scores">
+        <span class="score-chip"><span class="score-dot ${foodDot}"></span>Food ${v.food}</span>
+        <span class="score-chip"><span class="score-dot ${svcDot}"></span>Svc ${v.service}</span>
+        <span class="score-chip"><span class="score-dot ${expDot}"></span>Exp ${v.experience}</span>
+      </div>
+      <div class="card-liked">${escapeHTML(v.liked)}</div>`;
+    card.addEventListener('click', () => selectVenue(v));
+    card.addEventListener('keydown', (e) => { if (e.key === 'Enter') selectVenue(v); });
+    container.appendChild(card);
+  });
+}
+
+// ── FILTER ──
+function getFiltered() {
+  let f = venues.filter(v => {
+    if (state.activeTypes.size > 0 && !state.activeTypes.has(shortType(v.type))) return false;
+    if (state.activeReasons.size > 0 && !state.activeReasons.has(v.reason)) return false;
+    if (state.search) {
+      const s = state.search;
+      if (!v.name.toLowerCase().includes(s) && !v.location.toLowerCase().includes(s)) return false;
+    }
+    if (v.food < state.minFood) return false;
+    if (v.service < state.minService) return false;
+    if (v.experience < state.minExperience) return false;
+    if (v.overall < state.minOverall) return false;
+    return true;
+  });
+  // Sort
+  const sortKey = state.sort;
+  f.sort((a, b) => b[sortKey] - a[sortKey]);
+  return f;
+}
+
+function applyFilters() {
+  const filtered = getFiltered();
+  document.getElementById('resultCount').innerHTML = `Showing <strong>${filtered.length}</strong> of <strong>${venues.length}</strong>`;
+  renderList(filtered);
+  updateMarkers(filtered);
+}
+
+// ── DRAWER ──
+function selectVenue(v) {
+  state.selectedVenue = v;
+  openDrawer(v);
+  applyFilters(); // update selected states
+  // Pan map to venue — zoom into cluster if needed
+  if (v.coords && map && v._marker) {
+    if (markersLayer.zoomToShowLayer) {
+      const targetVenue = v;
+      markersLayer.zoomToShowLayer(v._marker, () => {
+        setTimeout(() => {
+          if (state.selectedVenue === targetVenue && targetVenue._marker) {
+            targetVenue._marker.openPopup();
+          }
+        }, 200);
+      });
+    } else {
+      map.setView(v.coords, Math.max(map.getZoom(), 13), { animate: true });
+      v._marker.openPopup();
+    }
+  }
+}
+
+function hashCode(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) { h = ((h << 5) - h + s.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+
+function openDrawer(v) {
+  const drawer = document.getElementById('drawer');
+  const overlay = document.getElementById('drawerOverlay');
+  document.getElementById('drawerName').textContent = v.name;
+
+  const body = document.getElementById('drawerBody');
+  const mapsQ = encodeURIComponent(`${v.name} ${v.location}`);
+
+  body.innerHTML = `
+    <div class="drawer-badges">
+      <span class="badge badge-type">${escapeHTML(shortType(v.type))}</span>
+      <span class="badge badge-reason">${escapeHTML(v.reason)}</span>
+    </div>
+    <div class="drawer-location">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      ${escapeHTML(v.location)}
+    </div>
+
+    <div class="drawer-section-label">Scores</div>
+    <div class="score-breakdown">
+      ${scoreBarHTML('Food / Drinks', v.food)}
+      ${scoreBarHTML('Service', v.service)}
+      ${scoreBarHTML('Experience', v.experience)}
+      ${scoreBarHTML('Overall', v.overall)}
+    </div>
+
+    <div class="drawer-section-label">What I liked</div>
+    <div class="note-block">
+      <div class="note-text">${escapeHTML(v.liked)}</div>
+    </div>
+
+    <div class="drawer-section-label">Photos</div>
+    <div class="drawer-photos" id="drawerPhotos">
+      <div class="drawer-photo hero"><div class="photo-shimmer"></div></div>
+      <div class="drawer-photo"><div class="photo-shimmer"></div></div>
+      <div class="drawer-photo"><div class="photo-shimmer"></div></div>
+    </div>
+
+    <div class="drawer-section-label">Links</div>
+    <div class="drawer-links">
+      <a class="drawer-link" href="https://www.google.com/maps/search/?api=1&query=${mapsQ}" target="_blank" rel="noopener" aria-label="Open ${v.name} in Google Maps">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Open in Google Maps
+      </a>
+      <a class="drawer-link" href="https://www.google.com/search?q=${mapsQ}" target="_blank" rel="noopener" aria-label="Search for ${v.name} on Google">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search on Google
+      </a>
+    </div>
+  `;
+
+  drawer.classList.add('open');
+  overlay.classList.add('open');
+
+  // Load photos (Google Places → fallback to picsum)
+  loadDrawerPhotos(v);
+}
+
+async function loadDrawerPhotos(v) {
+  const container = document.getElementById('drawerPhotos');
+  if (!container) return;
+
+  const cacheKey = v.name + '|' + v.location;
+  let photos = photoCache[cacheKey] || null;
+
+  // Try fetching from Google Places if not cached
+  if (!photos && placesReady) {
+    photos = await getVenuePhotos(v);
+  }
+
+  // If still no photos, use picsum placeholders
+  const isPicsum = !photos || photos.length === 0;
+  if (isPicsum) {
+    const h = hashCode(v.name);
+    photos = [];
+    for (let i = 0; i < 5; i++) {
+      photos.push('https://picsum.photos/seed/' + (h + i) + '/600/450');
+    }
+  }
+
+  // Build gallery: 1 hero + up to 4 grid
+  const count = Math.min(photos.length, 5);
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    const isHero = i === 0;
+    const cls = isHero ? 'drawer-photo hero' : 'drawer-photo';
+    const alt = isPicsum ? 'Placeholder photo' : 'Photo of ' + v.name;
+    html += '<div class="' + cls + '">';
+    html += '<div class="photo-shimmer"></div>';
+    html += '<img class="loading" src="' + photos[i] + '" alt="' + alt + '" loading="lazy" onload="this.classList.remove(\'loading\');this.classList.add(\'loaded\');this.previousElementSibling.style.display=\'none\'" onerror="this.previousElementSibling.style.display=\'none\';this.style.display=\'none\'">';
+    if (isPicsum) html += '<span class="photo-label">Placeholder</span>';
+    html += '</div>';
+  }
+
+  if (isPicsum && GOOGLE_PLACES_API_KEY === '') {
+    html += '<div class="photos-status">Add a Google Places API key for real photos</div>';
+  }
+
+  container.className = 'drawer-photos has-hero';
+  container.innerHTML = html;
+}
+
+function scoreBarHTML(label, val) {
+  const pct = (val / 10) * 100;
+  const color = val >= SCORE_GREEN ? 'var(--green)' : val >= SCORE_AMBER ? 'var(--amber)' : 'var(--red)';
+  return `<div class="score-bar-row">
+    <span class="score-bar-label">${label}</span>
+    <div class="score-bar-track"><div class="score-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+    <span class="score-bar-val" style="color:${color}">${val}</span>
+  </div>`;
+}
+
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawerOverlay').classList.remove('open');
+  state.selectedVenue = null;
+  applyFilters();
+}
+
+document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+
+// ── GOOGLE MAPS API LOADER ──
+function loadGoogleMapsAPI() {
+  if (!GOOGLE_PLACES_API_KEY) {
+    console.log('[Venue Explorer] No Google Places API key set — using placeholder photos. Add your key at the top of the <script> block.');
+    return;
+  }
+  const script = document.createElement('script');
+  script.src = 'https://maps.googleapis.com/maps/api/js?key=' + GOOGLE_PLACES_API_KEY + '&libraries=places&callback=initPlacesService';
+  script.async = true;
+  script.defer = true;
+  script.onerror = function() {
+    console.warn('[Venue Explorer] Failed to load Google Maps API — falling back to placeholder photos');
+  };
+  document.head.appendChild(script);
+}
+// Expose callback globally for Google Maps
+window.initPlacesService = initPlacesService;
+
+// ── BOOT ──
+(async () => {
+  // First set fallbacks immediately for a fast first render
+  venues.forEach(v => {
+    const key = `${v.name}, ${v.location}`;
+    if (geocodeCache[key]) {
+      v.coords = geocodeCache[key];
+    } else {
+      const fb = getFallback(v.location);
+      if (fb) {
+        const jitter = () => (Math.random() - 0.5) * 0.003;
+        v.coords = [fb[0] + jitter(), fb[1] + jitter()];
+      }
+    }
+  });
+  applyFilters();
+  // Start loading Google Places API in parallel
+  loadGoogleMapsAPI();
+  // Then geocode properly in background
+  await geocodeAll();
+  applyFilters();
+})();
+</script>
+</body>
+</html>

@@ -6,11 +6,7 @@
 <title>Venue Explorer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" />
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
 <style>
 :root {
   --font-display: 'Fraunces', Georgia, serif;
@@ -656,88 +652,24 @@ input[type="range"]::-moz-range-thumb {
 }
 .drawer-link svg { flex-shrink: 0; }
 
-/* Map tile offline banner */
-.offline-banner {
-  position: absolute;
-  top: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 900;
-  background: var(--amber-bg);
-  color: var(--amber);
-  font-size: 12px;
-  font-weight: 500;
-  padding: 6px 16px;
-  border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-sm);
-  display: none;
-}
-.offline-banner.show { display: block; }
-
-/* Custom Leaflet marker */
-.custom-marker {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  border: 3px solid #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
-  transition: transform 150ms ease;
-}
-.custom-marker:hover { transform: scale(1.2); }
-.custom-marker.green { background: var(--green); }
-.custom-marker.amber { background: var(--amber); }
-.custom-marker.red { background: var(--red); }
-.custom-marker.selected {
-  transform: scale(1.3);
-  box-shadow: 0 0 0 3px rgba(196,93,62,0.3), 0 2px 8px rgba(0,0,0,0.25);
-}
-
-/* Cluster bubbles — override default MarkerCluster styles */
-.marker-cluster-custom {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.marker-cluster-custom div {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 700;
-  color: #fff;
-  border: 3px solid #fff;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.22);
-  transition: transform 150ms ease;
-  cursor: pointer;
-}
-.marker-cluster-custom div:hover { transform: scale(1.12); }
-.cluster-small div  { background: var(--accent); width: 34px; height: 34px; font-size: 12px; }
-.cluster-medium div { background: var(--amber); width: 40px; height: 40px; font-size: 13px; }
-.cluster-large div  { background: var(--red); width: 46px; height: 46px; font-size: 14px; }
-
-/* hide default MarkerCluster ring styles */
-.marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background: none !important; }
-.marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div { background: none !important; }
-
-.leaflet-popup-content-wrapper {
-  border-radius: var(--radius-md) !important;
-  box-shadow: var(--shadow-md) !important;
+/* Google Maps info window */
+.gm-style .gm-style-iw-c {
+  border-radius: 10px !important;
   padding: 0 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
 }
-.leaflet-popup-content {
-  margin: 12px 16px !important;
-  font-family: var(--font-body) !important;
+.gm-style .gm-style-iw-d { overflow: auto !important; }
+.info-window {
+  padding: 10px 14px;
+  font-family: var(--font-body);
 }
-.popup-name {
+.info-window .popup-name {
   font-family: var(--font-display);
   font-size: 14px;
   font-weight: 600;
 }
-.popup-loc { font-size: 11px; color: var(--text-tertiary); }
-.popup-score { font-size: 12px; font-weight: 700; margin-top: 2px; }
+.info-window .popup-loc { font-size: 11px; color: var(--text-tertiary); }
+.info-window .popup-score { font-size: 12px; font-weight: 700; margin-top: 2px; }
 
 /* Section label inside drawer */
 .drawer-section-label {
@@ -844,7 +776,6 @@ input[type="range"]::-moz-range-thumb {
     </div>
     <div class="map-container" id="mapContainer">
       <div id="map"></div>
-      <div class="offline-banner" id="offlineBanner">Map tiles may not load offline — list still works.</div>
     </div>
     <div class="list-container hidden" id="listContainer"></div>
   </main>
@@ -869,8 +800,7 @@ input[type="range"]::-moz-range-thumb {
 const GOOGLE_PLACES_API_KEY = 'AIzaSyDMTy5EQ8Wje-PfziAzfCpcQfFilqLlRZw';
 // ═══════════════════════════════════════════════════════════
 
-// ── GOOGLE PLACES PHOTO SYSTEM ──
-let placesService = null;
+// ── GOOGLE PLACES PHOTO SYSTEM (New API) ──
 let placesReady = false;
 
 const photoCache = (() => {
@@ -882,44 +812,29 @@ function savePhotoCache() {
 
 function initPlacesService() {
   if (!GOOGLE_PLACES_API_KEY) return;
-  // Create a hidden map div for PlacesService (required by Google)
-  let dummy = document.getElementById('__places_dummy');
-  if (!dummy) {
-    dummy = document.createElement('div');
-    dummy.id = '__places_dummy';
-    dummy.style.display = 'none';
-    document.body.appendChild(dummy);
-  }
-  const dummyMap = new google.maps.Map(dummy, { center: {lat:0,lng:0}, zoom:1 });
-  placesService = new google.maps.places.PlacesService(dummyMap);
   placesReady = true;
-  console.log('[Venue Explorer] Google Places API ready — prefetching photos…');
-  prefetchAllPhotos();
+  console.log('[Venue Explorer] Google Places API ready');
 }
 
-function searchPlacePhotos(venueName, location) {
-  return new Promise((resolve) => {
-    if (!placesService) { resolve(null); return; }
-    const query = venueName + ' ' + location;
-    placesService.findPlaceFromQuery({
-      query: query,
-      fields: ['photos', 'name', 'place_id']
-    }, (results, status) => {
-      if (status === google.maps.places.PlacesServiceStatus.OK && results && results.length > 0) {
-        const place = results[0];
-        if (place.photos && place.photos.length > 0) {
-          const urls = place.photos.slice(0, 5).map(p =>
-            p.getUrl({ maxWidth: 600, maxHeight: 450 })
-          );
-          resolve(urls);
-        } else {
-          resolve(null);
-        }
-      } else {
-        resolve(null);
-      }
-    });
-  });
+async function searchPlacePhotos(venueName, location) {
+  try {
+    var request = {
+      textQuery: venueName + ', ' + location,
+      fields: ['photos', 'displayName'],
+      maxResultCount: 1
+    };
+    var result = await google.maps.places.Place.searchByText(request);
+    var places = result.places;
+    if (places && places.length > 0 && places[0].photos && places[0].photos.length > 0) {
+      return places[0].photos.slice(0, 5).map(function(photo) {
+        return photo.getURI({ maxWidth: 600, maxHeight: 450 });
+      });
+    }
+    return null;
+  } catch(e) {
+    console.warn('[Venue Explorer] Photo fetch failed:', e);
+    return null;
+  }
 }
 
 async function getVenuePhotos(venue) {
@@ -1029,10 +944,7 @@ function parseCSV(csv) {
     let inQuotes = false;
     for (let c = 0; c < line.length; c++) {
       const ch = line[c];
-      if (ch === '"') {
-        if (inQuotes && line[c + 1] === '"') { field += '"'; c++; }
-        else { inQuotes = !inQuotes; }
-      }
+      if (ch === '"') { inQuotes = !inQuotes; }
       else if (ch === ',' && !inQuotes) { fields.push(field.trim()); field = ''; }
       else { field += ch; }
     }
@@ -1105,8 +1017,15 @@ const FALLBACK_COORDS = {
 };
 
 // ── GEOCODING ──
+const GEO_CACHE_VERSION = 'v3-newapi'; // bump this to force re-geocode
 const geocodeCache = (() => {
-  try { return JSON.parse(localStorage.getItem('venueGeoCache') || '{}'); } catch(e) { return {}; }
+  try {
+    const raw = JSON.parse(localStorage.getItem('venueGeoCache') || '{}');
+    if (raw._version === GEO_CACHE_VERSION) return raw;
+    // Version mismatch — clear stale Nominatim results
+    localStorage.removeItem('venueGeoCache');
+    return { _version: GEO_CACHE_VERSION };
+  } catch(e) { return { _version: GEO_CACHE_VERSION }; }
 })();
 
 function saveGeoCache() {
@@ -1122,78 +1041,81 @@ function getFallback(loc) {
   return null;
 }
 
+// Google Places geocoding (New API) — much more accurate for specific venues
+async function geocodeWithGoogle(venue) {
+  try {
+    var request = {
+      textQuery: venue.name + ', ' + venue.location,
+      fields: ['location'],
+      maxResultCount: 1
+    };
+    var result = await google.maps.places.Place.searchByText(request);
+    var places = result.places;
+    if (places && places.length > 0 && places[0].location) {
+      var loc = places[0].location;
+      return [loc.lat(), loc.lng()];
+    }
+    return null;
+  } catch(e) {
+    console.warn('[Venue Explorer] Geocode failed for', venue.name, e);
+    return null;
+  }
+}
+
 async function geocodeVenue(venue) {
-  const key = `${venue.name}, ${venue.location}`;
+  const key = venue.name + ', ' + venue.location;
   if (geocodeCache[key]) return geocodeCache[key];
 
+  // Try Google Places first (most accurate)
+  if (placesReady) {
+    const googleCoords = await geocodeWithGoogle(venue);
+    if (googleCoords) {
+      geocodeCache[key] = googleCoords;
+      saveGeoCache();
+      return googleCoords;
+    }
+  }
+
+  // Fallback to known coordinates
   const fb = getFallback(venue.location);
-
-  try {
-    const q = encodeURIComponent(`${venue.name}, ${venue.location}`);
-    const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
-      headers: { 'User-Agent': 'VenueExplorerMockup/1.0' }
-    });
-    const data = await resp.json();
-    if (data && data.length > 0) {
-      const coords = [parseFloat(data[0].lat), parseFloat(data[0].lon)];
-      geocodeCache[key] = coords;
-      saveGeoCache();
-      return coords;
-    }
-  } catch(e) {}
-
-  // Try just location
-  const locKey = venue.location;
-  if (geocodeCache[locKey]) return geocodeCache[locKey];
-  try {
-    const q2 = encodeURIComponent(venue.location);
-    const resp2 = await fetch(`https://nominatim.openstreetmap.org/search?q=${q2}&format=json&limit=1`, {
-      headers: { 'User-Agent': 'VenueExplorerMockup/1.0' }
-    });
-    const data2 = await resp2.json();
-    if (data2 && data2.length > 0) {
-      const coords = [parseFloat(data2[0].lat), parseFloat(data2[0].lon)];
-      geocodeCache[locKey] = coords;
-      saveGeoCache();
-      return coords;
-    }
-  } catch(e) {}
-
   if (fb) {
-    // Add a little jitter so markers don't stack perfectly
-    const jitter = () => (Math.random() - 0.5) * 0.004;
-    const coords = [fb[0] + jitter(), fb[1] + jitter()];
+    const jitter = function() { return (Math.random() - 0.5) * 0.004; };
+    var coords = [fb[0] + jitter(), fb[1] + jitter()];
     geocodeCache[key] = coords;
     saveGeoCache();
     return coords;
   }
 
   // Unknown cluster
-  const unk = [51.48, -0.18 + Math.random() * 0.02];
+  var unk = [51.48, -0.18 + Math.random() * 0.02];
   geocodeCache[key] = unk;
   saveGeoCache();
   return unk;
 }
 
 async function geocodeAll() {
-  const statusEl = document.getElementById('geocodeStatus');
-  const textEl = document.getElementById('geocodeText');
-  let needsGeocode = venues.filter(v => !geocodeCache[`${v.name}, ${v.location}`]);
+  var statusEl = document.getElementById('geocodeStatus');
+  var textEl = document.getElementById('geocodeText');
+  var needsGeocode = venues.filter(function(v) {
+    return !geocodeCache[v.name + ', ' + v.location];
+  });
   if (needsGeocode.length === 0) {
-    venues.forEach(v => { v.coords = geocodeCache[`${v.name}, ${v.location}`]; });
+    venues.forEach(function(v) { v.coords = geocodeCache[v.name + ', ' + v.location]; });
     return;
   }
   statusEl.classList.add('active');
-  let done = 0;
-  for (const v of venues) {
-    const key = `${v.name}, ${v.location}`;
+  var done = 0;
+  for (var i = 0; i < venues.length; i++) {
+    var v = venues[i];
+    var key = v.name + ', ' + v.location;
     if (geocodeCache[key]) {
       v.coords = geocodeCache[key];
       continue;
     }
-    textEl.textContent = `Geocoding ${++done}/${needsGeocode.length}…`;
+    done++;
+    textEl.textContent = 'Geocoding ' + done + '/' + needsGeocode.length + '…';
     v.coords = await geocodeVenue(v);
-    await new Promise(r => setTimeout(r, 1100)); // polite rate limit
+    await new Promise(function(r) { setTimeout(r, 300); }); // rate limit
   }
   statusEl.classList.remove('active');
 }
@@ -1243,7 +1165,6 @@ renderPills(document.getElementById('reasonFilters'), reasons, state.activeReaso
   const valEl = document.getElementById(key + 'Val');
   slider.addEventListener('input', () => {
     const v = parseFloat(slider.value);
-    if (isNaN(v) || v < 0 || v > 10) return;
     state['min' + key.charAt(0).toUpperCase() + key.slice(1)] = v;
     valEl.textContent = v;
     applyFilters();
@@ -1289,120 +1210,147 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     state.tab = btn.dataset.tab;
     document.getElementById('mapContainer').classList.toggle('hidden', state.tab !== 'map');
     document.getElementById('listContainer').classList.toggle('hidden', state.tab !== 'list');
-    if (state.tab === 'map' && map) map.invalidateSize();
+    if (state.tab === 'map' && map) {
+      google.maps.event.trigger(map, 'resize');
+    }
   });
 });
 
-// ── MAP ──
-const hasLeaflet = typeof L !== 'undefined';
-let map, markersLayer;
+// ── MAP (Google Maps) ──
+let map = null;
+let mapMarkers = [];
+let markerCluster = null;
+let activeInfoWindow = null;
 
-function initMap() {
-  if (!hasLeaflet) {
-    document.getElementById('offlineBanner').classList.add('show');
-    // Auto-switch to list view when map unavailable
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('[data-tab="list"]').classList.add('active');
-    document.getElementById('mapContainer').classList.add('hidden');
-    document.getElementById('listContainer').classList.remove('hidden');
-    state.tab = 'list';
-    return;
-  }
-  map = L.map('map', { zoomControl: true, attributionControl: true }).setView([51.51, -0.12], 12);
-  try {
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 18,
-    }).addTo(map);
-    map.on('tileerror', () => {
-      document.getElementById('offlineBanner').classList.add('show');
-    });
-  } catch(e) {
-    document.getElementById('offlineBanner').classList.add('show');
-  }
-  const hasCluster = hasLeaflet && typeof L.markerClusterGroup === 'function';
-  if (hasCluster) {
-    markersLayer = L.markerClusterGroup({
-      maxClusterRadius: 45,
-      spiderfyOnMaxZoom: true,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: true,
-      animate: true,
-      animateAddingMarkers: false,
-      iconCreateFunction: function(cluster) {
-        const count = cluster.getChildCount();
-        let sizeClass = 'cluster-small';
-        let size = 40;
-        if (count >= 10) { sizeClass = 'cluster-large'; size = 52; }
-        else if (count >= 4) { sizeClass = 'cluster-medium'; size = 46; }
-        return L.divIcon({
-          html: `<div>${count}</div>`,
-          className: 'marker-cluster-custom ' + sizeClass,
-          iconSize: L.point(size, size),
-        });
-      }
-    }).addTo(map);
-  } else {
-    markersLayer = L.layerGroup().addTo(map);
-  }
-}
-initMap();
-
-const SCORE_GREEN = 8.5;
-const SCORE_AMBER = 7.0;
-
-function escapeHTML(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
+function initGoogleMap() {
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 51.51, lng: -0.12 },
+    zoom: 12,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: false,
+    zoomControl: true,
+    styles: [
+      { featureType: 'poi', elementType: 'labels', stylers: [{ visibility: 'off' }] },
+      { featureType: 'transit', elementType: 'labels', stylers: [{ visibility: 'off' }] }
+    ]
+  });
 }
 
 function scoreColor(overall) {
-  if (overall >= SCORE_GREEN) return 'green';
-  if (overall >= SCORE_AMBER) return 'amber';
+  if (overall >= 8.5) return 'green';
+  if (overall >= 7.0) return 'amber';
   return 'red';
 }
+function scoreColorHex(overall) {
+  if (overall >= 8.5) return '#2D8A56';
+  if (overall >= 7.0) return '#C08B2D';
+  return '#C44D3E';
+}
 function scoreColorVar(overall) {
-  if (overall >= SCORE_GREEN) return 'var(--green)';
-  if (overall >= SCORE_AMBER) return 'var(--amber)';
+  if (overall >= 8.5) return 'var(--green)';
+  if (overall >= 7.0) return 'var(--amber)';
   return 'var(--red)';
 }
 
-let mapFitDone = false;
+function updateMarkers(filtered, skipFitBounds) {
+  if (!map) return;
 
-function updateMarkers(filtered) {
-  if (!hasLeaflet || !markersLayer) return;
-  markersLayer.clearLayers();
-  const bounds = [];
-  const markers = [];
-  filtered.forEach(v => {
-    if (!v.coords) return;
-    const color = scoreColor(v.overall);
-    const icon = L.divIcon({
-      className: '',
-      html: `<div class="custom-marker ${color} ${state.selectedVenue === v ? 'selected' : ''}" data-name="${v.name}"></div>`,
-      iconSize: [28, 28],
-      iconAnchor: [14, 14],
-    });
-    const marker = L.marker(v.coords, { icon });
-    marker.bindPopup(`<div class="popup-name">${escapeHTML(v.name)}</div><div class="popup-loc">${escapeHTML(v.location)}</div><div class="popup-score" style="color:${scoreColorVar(v.overall)}">${v.overall}</div>`, { closeButton: false, offset: [0, -10] });
-    marker.on('click', () => { selectVenue(v); });
-    v._marker = marker;
-    markers.push(marker);
-    bounds.push(v.coords);
-  });
-  // Batch add for cluster performance
-  if (markersLayer.addLayers) {
-    markersLayer.addLayers(markers);
-  } else {
-    markers.forEach(m => m.addTo(markersLayer));
+  // Clear existing markers
+  mapMarkers.forEach(function(m) { m.setMap(null); });
+  mapMarkers = [];
+  if (markerCluster) {
+    markerCluster.clearMarkers();
+    markerCluster = null;
   }
-  if (bounds.length > 0 && !mapFitDone) {
-    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14, animate: true, duration: 500 });
-    mapFitDone = true;
+  if (activeInfoWindow) {
+    activeInfoWindow.close();
+    activeInfoWindow = null;
+  }
+
+  var bounds = new google.maps.LatLngBounds();
+  var hasMarkers = false;
+
+  filtered.forEach(function(v) {
+    if (!v.coords) return;
+    var pos = { lat: v.coords[0], lng: v.coords[1] };
+    var marker = new google.maps.Marker({
+      position: pos,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: scoreColorHex(v.overall),
+        fillOpacity: 1,
+        strokeColor: '#ffffff',
+        strokeWeight: 2.5,
+      },
+      title: v.name
+    });
+
+    var infoContent = '<div class="info-window">' +
+      '<div class="popup-name">' + v.name + '</div>' +
+      '<div class="popup-loc">' + v.location + '</div>' +
+      '<div class="popup-score" style="color:' + scoreColorHex(v.overall) + '">' + v.overall + '</div>' +
+      '</div>';
+
+    var infoWindow = new google.maps.InfoWindow({ content: infoContent });
+
+    marker.addListener('click', function() {
+      selectVenue(v);
+    });
+
+    v._marker = marker;
+    v._infoWindow = infoWindow;
+    mapMarkers.push(marker);
+    bounds.extend(pos);
+    hasMarkers = true;
+  });
+
+  // Cluster renderer
+  var clusterRenderer = {
+    render: function(cluster, stats) {
+      var count = cluster.count;
+      var position = cluster.position;
+      var scale = 16 + Math.min(count, 15);
+      return new google.maps.Marker({
+        position: position,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: scale,
+          fillColor: '#C45D3E',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 3,
+        },
+        label: {
+          text: String(count),
+          color: '#ffffff',
+          fontSize: '12px',
+          fontWeight: '700',
+          fontFamily: 'DM Sans, sans-serif'
+        },
+        zIndex: 1000 + count
+      });
+    }
+  };
+
+  if (typeof markerClusterer !== 'undefined' && markerClusterer.MarkerClusterer) {
+    markerCluster = new markerClusterer.MarkerClusterer({
+      map: map,
+      markers: mapMarkers,
+      renderer: clusterRenderer
+    });
+  } else {
+    mapMarkers.forEach(function(m) { m.setMap(map); });
+  }
+
+  if (hasMarkers && !skipFitBounds) {
+    map.fitBounds(bounds, { top: 40, bottom: 40, left: 40, right: 40 });
+    // Prevent over-zooming on single marker
+    var listener = google.maps.event.addListener(map, 'idle', function() {
+      if (map.getZoom() > 15) map.setZoom(15);
+      google.maps.event.removeListener(listener);
+    });
   }
 }
 
@@ -1411,18 +1359,13 @@ function renderList(filtered) {
   const container = document.getElementById('listContainer');
   container.innerHTML = '';
   if (filtered.length === 0) {
-    const emptyState = document.createElement('div');
-    emptyState.className = 'empty-state';
-    emptyState.innerHTML = `
-      <div class="empty-icon">🍽️</div>
-      <div class="empty-title">No venues match your filters</div>
-      <div class="empty-text">Try adjusting your search, type, reason or score filters</div>`;
-    const emptyResetBtn = document.createElement('button');
-    emptyResetBtn.className = 'empty-reset';
-    emptyResetBtn.textContent = 'Reset filters';
-    emptyResetBtn.addEventListener('click', () => document.getElementById('resetBtn').click());
-    emptyState.appendChild(emptyResetBtn);
-    container.appendChild(emptyState);
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🍽️</div>
+        <div class="empty-title">No venues match your filters</div>
+        <div class="empty-text">Try adjusting your search, type, reason or score filters</div>
+        <button class="empty-reset" onclick="document.getElementById('resetBtn').click()">Reset filters</button>
+      </div>`;
     return;
   }
   filtered.forEach(v => {
@@ -1433,23 +1376,20 @@ function renderList(filtered) {
     card.setAttribute('aria-label', `View details for ${v.name}`);
     const oc = scoreColor(v.overall);
     const ocClass = 'overall-' + oc;
-    const foodDot = 'score-' + scoreColor(v.food);
-    const svcDot = 'score-' + scoreColor(v.service);
-    const expDot = 'score-' + scoreColor(v.experience);
     card.innerHTML = `
       <div class="card-overall ${ocClass}">${v.overall}</div>
-      <div class="card-name">${escapeHTML(v.name)}</div>
+      <div class="card-name">${v.name}</div>
       <div class="card-meta">
-        <span class="badge badge-type">${escapeHTML(shortType(v.type))}</span>
-        <span class="badge badge-reason">${escapeHTML(v.reason)}</span>
-        <span class="badge badge-location">${escapeHTML(v.location)}</span>
+        <span class="badge badge-type">${shortType(v.type)}</span>
+        <span class="badge badge-reason">${v.reason}</span>
+        <span class="badge badge-location">${v.location}</span>
       </div>
       <div class="card-scores">
-        <span class="score-chip"><span class="score-dot ${foodDot}"></span>Food ${v.food}</span>
-        <span class="score-chip"><span class="score-dot ${svcDot}"></span>Svc ${v.service}</span>
-        <span class="score-chip"><span class="score-dot ${expDot}"></span>Exp ${v.experience}</span>
+        <span class="score-chip"><span class="score-dot ${scoreColor(v.food) === 'green' ? 'score-green' : scoreColor(v.food) === 'amber' ? 'score-amber' : 'score-red'}"></span>Food ${v.food}</span>
+        <span class="score-chip"><span class="score-dot ${scoreColor(v.service) === 'green' ? 'score-green' : scoreColor(v.service) === 'amber' ? 'score-amber' : 'score-red'}"></span>Svc ${v.service}</span>
+        <span class="score-chip"><span class="score-dot ${scoreColor(v.experience) === 'green' ? 'score-green' : scoreColor(v.experience) === 'amber' ? 'score-amber' : 'score-red'}"></span>Exp ${v.experience}</span>
       </div>
-      <div class="card-liked">${escapeHTML(v.liked)}</div>`;
+      <div class="card-liked">${v.liked}</div>`;
     card.addEventListener('click', () => selectVenue(v));
     card.addEventListener('keydown', (e) => { if (e.key === 'Enter') selectVenue(v); });
     container.appendChild(card);
@@ -1477,33 +1417,25 @@ function getFiltered() {
   return f;
 }
 
-function applyFilters() {
+function applyFilters(skipFitBounds) {
   const filtered = getFiltered();
   document.getElementById('resultCount').innerHTML = `Showing <strong>${filtered.length}</strong> of <strong>${venues.length}</strong>`;
   renderList(filtered);
-  updateMarkers(filtered);
+  updateMarkers(filtered, skipFitBounds);
 }
 
 // ── DRAWER ──
 function selectVenue(v) {
   state.selectedVenue = v;
   openDrawer(v);
-  applyFilters(); // update selected states
-  // Pan map to venue — zoom into cluster if needed
+  applyFilters(true); // update selected states without resetting map view
+  // Pan map to venue and show info window
   if (v.coords && map && v._marker) {
-    if (markersLayer.zoomToShowLayer) {
-      const targetVenue = v;
-      markersLayer.zoomToShowLayer(v._marker, () => {
-        setTimeout(() => {
-          if (state.selectedVenue === targetVenue && targetVenue._marker) {
-            targetVenue._marker.openPopup();
-          }
-        }, 200);
-      });
-    } else {
-      map.setView(v.coords, Math.max(map.getZoom(), 13), { animate: true });
-      v._marker.openPopup();
-    }
+    if (activeInfoWindow) activeInfoWindow.close();
+    map.panTo({ lat: v.coords[0], lng: v.coords[1] });
+    if (map.getZoom() < 14) map.setZoom(14);
+    v._infoWindow.open(map, v._marker);
+    activeInfoWindow = v._infoWindow;
   }
 }
 
@@ -1523,12 +1455,12 @@ function openDrawer(v) {
 
   body.innerHTML = `
     <div class="drawer-badges">
-      <span class="badge badge-type">${escapeHTML(shortType(v.type))}</span>
-      <span class="badge badge-reason">${escapeHTML(v.reason)}</span>
+      <span class="badge badge-type">${shortType(v.type)}</span>
+      <span class="badge badge-reason">${v.reason}</span>
     </div>
     <div class="drawer-location">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-      ${escapeHTML(v.location)}
+      ${v.location}
     </div>
 
     <div class="drawer-section-label">Scores</div>
@@ -1541,7 +1473,7 @@ function openDrawer(v) {
 
     <div class="drawer-section-label">What I liked</div>
     <div class="note-block">
-      <div class="note-text">${escapeHTML(v.liked)}</div>
+      <div class="note-text">${v.liked}</div>
     </div>
 
     <div class="drawer-section-label">Photos</div>
@@ -1617,7 +1549,7 @@ async function loadDrawerPhotos(v) {
 
 function scoreBarHTML(label, val) {
   const pct = (val / 10) * 100;
-  const color = val >= SCORE_GREEN ? 'var(--green)' : val >= SCORE_AMBER ? 'var(--amber)' : 'var(--red)';
+  const color = val >= 8.5 ? 'var(--green)' : val >= 7 ? 'var(--amber)' : 'var(--red)';
   return `<div class="score-bar-row">
     <span class="score-bar-label">${label}</span>
     <div class="score-bar-track"><div class="score-bar-fill" style="width:${pct}%;background:${color}"></div></div>
@@ -1629,7 +1561,7 @@ function closeDrawer() {
   document.getElementById('drawer').classList.remove('open');
   document.getElementById('drawerOverlay').classList.remove('open');
   state.selectedVenue = null;
-  applyFilters();
+  applyFilters(true);
 }
 
 document.getElementById('drawerClose').addEventListener('click', closeDrawer);
@@ -1637,44 +1569,60 @@ document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
 
 // ── GOOGLE MAPS API LOADER ──
+let googleMapsResolve;
+const googleMapsLoaded = new Promise(function(resolve) { googleMapsResolve = resolve; });
+
 function loadGoogleMapsAPI() {
   if (!GOOGLE_PLACES_API_KEY) {
     console.log('[Venue Explorer] No Google Places API key set — using placeholder photos. Add your key at the top of the <script> block.');
+    googleMapsResolve(false);
     return;
   }
-  const script = document.createElement('script');
-  script.src = 'https://maps.googleapis.com/maps/api/js?key=' + GOOGLE_PLACES_API_KEY + '&libraries=places&callback=initPlacesService';
+  var script = document.createElement('script');
+  script.src = 'https://maps.googleapis.com/maps/api/js?key=' + GOOGLE_PLACES_API_KEY + '&libraries=places&callback=onGoogleMapsReady';
   script.async = true;
   script.defer = true;
   script.onerror = function() {
-    console.warn('[Venue Explorer] Failed to load Google Maps API — falling back to placeholder photos');
+    console.warn('[Venue Explorer] Failed to load Google Maps API');
+    googleMapsResolve(false);
   };
   document.head.appendChild(script);
 }
-// Expose callback globally for Google Maps
-window.initPlacesService = initPlacesService;
+
+// Global callback for Google Maps API
+window.onGoogleMapsReady = function() {
+  initGoogleMap();
+  initPlacesService();
+  googleMapsResolve(true);
+  console.log('[Venue Explorer] Google Maps + Places ready');
+};
 
 // ── BOOT ──
 (async () => {
   // First set fallbacks immediately for a fast first render
-  venues.forEach(v => {
-    const key = `${v.name}, ${v.location}`;
+  venues.forEach(function(v) {
+    var key = v.name + ', ' + v.location;
     if (geocodeCache[key]) {
       v.coords = geocodeCache[key];
     } else {
-      const fb = getFallback(v.location);
+      var fb = getFallback(v.location);
       if (fb) {
-        const jitter = () => (Math.random() - 0.5) * 0.003;
+        var jitter = function() { return (Math.random() - 0.5) * 0.003; };
         v.coords = [fb[0] + jitter(), fb[1] + jitter()];
       }
     }
   });
-  applyFilters();
-  // Start loading Google Places API in parallel
+
+  // Load Google Maps API and wait for it
   loadGoogleMapsAPI();
-  // Then geocode properly in background
+  await googleMapsLoaded;
+
+  // Now geocode with Google Places (much more accurate)
   await geocodeAll();
   applyFilters();
+
+  // Then prefetch photos in background
+  if (placesReady) prefetchAllPhotos();
 })();
 </script>
 </body>

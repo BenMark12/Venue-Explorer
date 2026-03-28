@@ -307,6 +307,41 @@ input[type="range"]::-moz-range-thumb {
 #map { width: 100%; height: 100%; }
 .map-container.hidden { display: none; }
 
+/* Map loading overlay */
+.map-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  transition: opacity 0.4s ease;
+}
+.map-loading.fade-out { opacity: 0; pointer-events: none; }
+.map-loading-icon {
+  width: 52px;
+  height: 52px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+.map-loading-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+.map-loading-msg {
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  min-height: 18px;
+}
+
 /* List */
 .list-container {
   flex: 1;
@@ -776,6 +811,11 @@ input[type="range"]::-moz-range-thumb {
     </div>
     <div class="map-container" id="mapContainer">
       <div id="map"></div>
+      <div class="map-loading" id="mapLoading">
+        <div class="map-loading-icon"></div>
+        <div class="map-loading-title">Loading venues…</div>
+        <div class="map-loading-msg" id="mapLoadingMsg">Connecting to maps</div>
+      </div>
     </div>
     <div class="list-container hidden" id="listContainer"></div>
   </main>
@@ -1104,6 +1144,7 @@ async function geocodeAll() {
     return;
   }
   statusEl.classList.add('active');
+  var mapMsg = document.getElementById('mapLoadingMsg');
   var done = 0;
   for (var i = 0; i < venues.length; i++) {
     var v = venues[i];
@@ -1113,7 +1154,9 @@ async function geocodeAll() {
       continue;
     }
     done++;
-    textEl.textContent = 'Geocoding ' + done + '/' + needsGeocode.length + '…';
+    var progressText = 'Geocoding ' + done + '/' + needsGeocode.length + '…';
+    textEl.textContent = progressText;
+    if (mapMsg) mapMsg.textContent = progressText;
     v.coords = await geocodeVenue(v);
     await new Promise(function(r) { setTimeout(r, 300); }); // rate limit
   }
@@ -1614,12 +1657,19 @@ window.onGoogleMapsReady = function() {
   });
 
   // Load Google Maps API and wait for it
+  const loadingOverlay = document.getElementById('mapLoading');
+  const loadingMsg = document.getElementById('mapLoadingMsg');
   loadGoogleMapsAPI();
   await googleMapsLoaded;
 
   // Now geocode with Google Places (much more accurate)
+  loadingMsg.textContent = 'Geocoding venues…';
   await geocodeAll();
   applyFilters();
+
+  // Fade out and remove the loading overlay
+  loadingOverlay.classList.add('fade-out');
+  loadingOverlay.addEventListener('transitionend', () => loadingOverlay.remove(), { once: true });
 
   // Then prefetch photos in background
   if (placesReady) prefetchAllPhotos();

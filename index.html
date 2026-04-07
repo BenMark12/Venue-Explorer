@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <style>
 :root {
   --font-display: 'Fraunces', Georgia, serif;
@@ -1192,6 +1194,20 @@ input[type="range"]::-moz-range-thumb {
 // ═══════════════════════════════════════════════════════════
 const GOOGLE_PLACES_API_KEY = 'AIzaSyDMTy5EQ8Wje-PfziAzfCpcQfFilqLlRZw';
 // ═══════════════════════════════════════════════════════════
+// ▸ CONFIGURATION — Firebase (shared venue storage)
+//   1. Go to https://console.firebase.google.com
+//   2. Create a project → Add a web app → copy the config below
+//   3. In Firestore → Rules, set: allow read, write: if true;
+// ═══════════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+// ═══════════════════════════════════════════════════════════
 
 // ── GOOGLE PLACES PHOTO SYSTEM (New API) ──
 let placesReady = false;
@@ -1975,30 +1991,74 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawe
 // ── ADD / EDIT / DELETE VENUE ──
 const CUSTOM_VENUES_KEY = 'venueCustom';
 let editingVenue = null; // null = adding new, object ref = editing existing
+let db = null;
 
-function loadCustomVenues() {
+function initFirebase() {
+  if (!FIREBASE_CONFIG.projectId) return;
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db = firebase.firestore();
+    console.log('[Venue Explorer] Firebase ready');
+  } catch(e) {
+    console.warn('[Venue Explorer] Firebase init failed:', e);
+  }
+}
+
+function venueToFirestoreData(v) {
+  return {
+    name: v.name,
+    type: v.type,
+    location: v.location,
+    reason: v.reason,
+    food: v.food,
+    service: v.service,
+    experience: v.experience,
+    overall: v.overall,
+    liked: v.liked || '',
+    coords: v.coords || null,
+  };
+}
+
+function mergeVenueIntoArray(data) {
+  const existing = venues.find(function(v) { return v.name === data.name; });
+  if (existing) {
+    const wasCSV = existing._wasCSV;
+    Object.assign(existing, data);
+    existing._custom = true;
+    existing._wasCSV = wasCSV;
+  } else {
+    data._custom = true;
+    venues.push(data);
+  }
+}
+
+async function loadCustomVenues() {
+  // ── Try Firestore first ──
+  if (db) {
+    try {
+      const snapshot = await db.collection('venues').get();
+      snapshot.forEach(function(doc) {
+        const data = doc.data();
+        data._firestoreId = doc.id;
+        mergeVenueIntoArray(data);
+      });
+      // Mirror to localStorage as offline cache
+      saveLocalCache();
+      return;
+    } catch(e) {
+      console.warn('[Venue Explorer] Firestore load failed, using local cache:', e);
+    }
+  }
+  // ── Fallback: localStorage cache ──
   try {
     const saved = JSON.parse(localStorage.getItem(CUSTOM_VENUES_KEY) || '[]');
-    saved.forEach(function(s) {
-      // If a saved venue matches an existing CSV venue by name, update it in-place
-      const existing = venues.find(function(v) { return v.name === s.name; });
-      if (existing) {
-        const wasCSV = existing._wasCSV;
-        Object.assign(existing, s);
-        existing._custom = true;
-        existing._wasCSV = wasCSV; // preserve original CSV flag
-      } else {
-        s._custom = true;
-        venues.push(s);
-      }
-    });
+    saved.forEach(mergeVenueIntoArray);
   } catch(e) {}
 }
 
-function saveCustomVenues() {
+function saveLocalCache() {
   try {
     const custom = venues.filter(function(v) { return v._custom; });
-    // Strip runtime-only properties before saving
     const toSave = custom.map(function(v) {
       const copy = Object.assign({}, v);
       delete copy._marker;
@@ -2007,6 +2067,35 @@ function saveCustomVenues() {
     });
     localStorage.setItem(CUSTOM_VENUES_KEY, JSON.stringify(toSave));
   } catch(e) {}
+}
+
+// Kept for compatibility — always saves to Firestore if available
+function saveCustomVenues() { saveLocalCache(); }
+
+async function saveVenueToFirestore(venue) {
+  saveLocalCache();
+  if (!db) return;
+  try {
+    const data = venueToFirestoreData(venue);
+    if (venue._firestoreId) {
+      await db.collection('venues').doc(venue._firestoreId).set(data);
+    } else {
+      const ref = await db.collection('venues').add(data);
+      venue._firestoreId = ref.id;
+    }
+    saveLocalCache(); // keep cache in sync with Firestore id
+  } catch(e) {
+    console.warn('[Venue Explorer] Firestore save failed:', e);
+  }
+}
+
+async function deleteVenueFromFirestore(venue) {
+  if (!db || !venue._firestoreId) return;
+  try {
+    await db.collection('venues').doc(venue._firestoreId).delete();
+  } catch(e) {
+    console.warn('[Venue Explorer] Firestore delete failed:', e);
+  }
 }
 
 function openAddVenueModal(venueToEdit) {
@@ -2064,13 +2153,13 @@ function updateFiltersAfterChange() {
 }
 
 function deleteVenue(v) {
+  deleteVenueFromFirestore(v); // fire-and-forget
   const idx = venues.indexOf(v);
   if (idx !== -1) venues.splice(idx, 1);
-  // Clear its geo cache entry so it doesn't pollute
   const key = v.name + ', ' + v.location;
   delete geocodeCache[key];
   saveGeoCache();
-  saveCustomVenues();
+  saveLocalCache();
   updateFiltersAfterChange();
   closeDrawer();
   applyFilters();
@@ -2154,7 +2243,7 @@ document.getElementById('addVenueSubmit').addEventListener('click', async functi
       }
     }
 
-    saveCustomVenues();
+    await saveVenueToFirestore(editingVenue);
     updateFiltersAfterChange();
     applyFilters(true);
     closeAddVenueModal();
@@ -2169,7 +2258,7 @@ document.getElementById('addVenueSubmit').addEventListener('click', async functi
     if (placesReady) await getVenuePhotos(newVenue);
 
     venues.push(newVenue);
-    saveCustomVenues();
+    await saveVenueToFirestore(newVenue);
     updateFiltersAfterChange();
     applyFilters();
     closeAddVenueModal();
@@ -2214,8 +2303,9 @@ window.onGoogleMapsReady = function() {
 
 // ── BOOT ──
 (async () => {
-  // Load any previously saved custom venues before anything else
-  loadCustomVenues();
+  // Initialise Firebase and load shared venues before anything else
+  initFirebase();
+  await loadCustomVenues();
 
   // First set fallbacks immediately for a fast first render
   venues.forEach(function(v) {

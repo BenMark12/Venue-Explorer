@@ -1644,9 +1644,10 @@ function updateMarkers(filtered, skipFitBounds) {
         path: google.maps.SymbolPath.CIRCLE,
         scale: 10,
         fillColor: scoreColorHex(v.overall),
-        fillOpacity: 1,
-        strokeColor: '#ffffff',
-        strokeWeight: 2.5,
+        fillOpacity: 0.25,
+        strokeColor: scoreColorHex(v.overall),
+        strokeOpacity: 0.4,
+        strokeWeight: 1.5,
       },
       title: v.name
     });

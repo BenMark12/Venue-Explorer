@@ -1569,8 +1569,8 @@ function renderPills(container, items, stateSet, onChange) {
   });
 }
 
-renderPills(document.getElementById('typeFilters'), types, state.activeTypes, applyFilters);
-renderPills(document.getElementById('reasonFilters'), reasons, state.activeReasons, applyFilters);
+renderPills(document.getElementById('typeFilters'), getTypes(), state.activeTypes, applyFilters);
+renderPills(document.getElementById('reasonFilters'), getReasons(), state.activeReasons, applyFilters);
 
 // Sliders
 ['food', 'service', 'experience', 'overall'].forEach(key => {

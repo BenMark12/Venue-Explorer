@@ -23,6 +23,8 @@
   --accent: #C45D3E;
   --accent-light: #FDF0EC;
   --accent-hover: #A8472A;
+  --silver: #7D909F;
+  --silver-bg: #ECF0F4;
   --green: #2D8A56;
   --green-bg: #E8F5EE;
   --amber: #C08B2D;
@@ -406,6 +408,7 @@ input[type="range"]::-moz-range-thumb {
 .score-dot {
   width: 7px; height: 7px; border-radius: 50%;
 }
+.score-silver { background: var(--silver); }
 .score-green { background: var(--green); }
 .score-amber { background: var(--amber); }
 .score-red { background: var(--red); }
@@ -428,6 +431,7 @@ input[type="range"]::-moz-range-thumb {
   padding: 3px 10px;
   border-radius: var(--radius-pill);
 }
+.overall-silver { background: var(--silver-bg); color: var(--silver); }
 .overall-green { background: var(--green-bg); color: var(--green); }
 .overall-amber { background: var(--amber-bg); color: var(--amber); }
 .overall-red { background: var(--red-bg); color: var(--red); }
@@ -724,6 +728,262 @@ input[type="range"]::-moz-range-thumb {
   .drawer { width: 100vw; }
   .list-container { grid-template-columns: 1fr; }
 }
+
+/* ── ADD VENUE BUTTON ── */
+.add-venue-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: 12.5px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+}
+.add-venue-btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+.add-venue-btn:active { transform: none; }
+
+/* ── ADD VENUE MODAL ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 3000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms ease;
+  padding: 20px;
+}
+.modal-overlay.open { opacity: 1; pointer-events: auto; }
+
+.modal {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(16px) scale(0.98);
+  transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+.modal-overlay.open .modal { transform: none; }
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.3px;
+}
+.modal-close {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+}
+.modal-close:hover { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.modal-body::-webkit-scrollbar { width: 4px; }
+.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
+/* Form elements */
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--text-tertiary);
+}
+.form-input,
+.form-select,
+.form-textarea {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text-primary);
+  transition: border-color var(--transition), box-shadow var(--transition);
+  outline: none;
+  width: 100%;
+}
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+.form-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+.form-select { cursor: pointer; }
+
+/* Score inputs grid */
+.score-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+.score-input-group { display: flex; flex-direction: column; gap: 6px; }
+.score-number-wrap { position: relative; }
+.score-number {
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  background: var(--bg);
+  color: var(--text-primary);
+  text-align: center;
+  outline: none;
+  width: 100%;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.score-number::-webkit-outer-spin-button,
+.score-number::-webkit-inner-spin-button { -webkit-appearance: none; appearance: none; }
+.score-number:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+/* Submit / cancel buttons */
+.btn-cancel {
+  padding: 9px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-family: var(--font-body);
+  font-weight: 500;
+  background: var(--bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-cancel:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+.btn-submit {
+  padding: 9px 22px;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-submit:hover { background: var(--accent-hover); }
+.btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-submit-spinner {
+  width: 12px; height: 12px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+}
+.btn-submit.loading .btn-submit-spinner { display: block; }
+
+/* Custom venue badge */
+.badge-custom { background: #FDF0EC; color: var(--accent); }
+.badge-modified { background: #FFF8E8; color: var(--amber); }
+
+/* Form divider */
+.form-divider {
+  border: none;
+  border-top: 1px solid var(--border-light);
+  margin: 0;
+}
+
+/* ── DRAWER ACTION BUTTONS ── */
+.drawer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.drawer-action-btn {
+  width: 32px; height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.drawer-action-btn:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+.drawer-action-btn.delete:hover { background: var(--red-bg); color: var(--red); border-color: var(--red); }
+.drawer-delete-confirm {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  background: var(--red-bg);
+  border: 1px solid var(--red);
+  border-radius: var(--radius-md);
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--red);
+  font-weight: 500;
+}
+.drawer-delete-confirm.show { display: flex; }
+.drawer-delete-confirm button {
+  border: none; background: none; cursor: pointer; font-size: 12px; font-family: var(--font-body); font-weight: 600; padding: 0 4px;
+}
+.drawer-delete-confirm .confirm-yes { color: var(--red); }
+.drawer-delete-confirm .confirm-no { color: var(--text-secondary); }
 </style>
 </head>
 <body>
@@ -740,6 +1000,10 @@ input[type="range"]::-moz-range-thumb {
       <span id="geocodeText">Geocoding…</span>
     </div>
     <div class="result-count" id="resultCount">Showing <strong>0</strong> of <strong>0</strong></div>
+    <button class="add-venue-btn" id="addVenueBtn" aria-label="Add a new venue">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Add Venue
+    </button>
   </div>
 </header>
 
@@ -826,11 +1090,100 @@ input[type="range"]::-moz-range-thumb {
 <div class="drawer" id="drawer" role="dialog" aria-label="Venue details">
   <div class="drawer-header">
     <div class="drawer-name" id="drawerName"></div>
-    <button class="drawer-close" id="drawerClose" aria-label="Close details">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
+    <div class="drawer-actions">
+      <div class="drawer-delete-confirm" id="drawerDeleteConfirm">
+        Delete?
+        <button class="confirm-yes" id="drawerDeleteYes">Yes</button>
+        <button class="confirm-no" id="drawerDeleteNo">No</button>
+      </div>
+      <button class="drawer-action-btn" id="drawerEditBtn" aria-label="Edit venue" title="Edit venue">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+      <button class="drawer-action-btn delete" id="drawerDeleteBtn" aria-label="Delete venue" title="Delete venue">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </button>
+      <button class="drawer-close" id="drawerClose" aria-label="Close details">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
   </div>
   <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<!-- ADD VENUE MODAL -->
+<div class="modal-overlay" id="addVenueOverlay" role="dialog" aria-modal="true" aria-label="Add new venue">
+  <div class="modal" id="addVenueModal">
+    <div class="modal-header">
+      <div class="modal-title" id="addVenueModalTitle">Add Venue</div>
+      <button class="modal-close" id="addVenueClose" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="av-name">Venue Name *</label>
+        <input class="form-input" id="av-name" type="text" placeholder="e.g. The Clove Club" required autocomplete="off">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="av-type">Type *</label>
+          <select class="form-select" id="av-type">
+            <option value="Fine Dining Restaurant (Tasting Menu)">Fine Dining (Tasting)</option>
+            <option value="Fine Dining Restaurant (A La Carte)">Fine Dining (A La Carte)</option>
+            <option value="Casual Dining" selected>Casual Dining</option>
+            <option value="Wine Bar & Food">Wine Bar &amp; Food</option>
+            <option value="Wine Bar">Wine Bar</option>
+            <option value="Cocktail Bar">Cocktail Bar</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="av-reason">Reason *</label>
+          <select class="form-select" id="av-reason">
+            <option value="Special Occasion">Special Occasion</option>
+            <option value="Nice Occasion">Nice Occasion</option>
+            <option value="Nice Regular" selected>Nice Regular</option>
+            <option value="Casual Regular">Casual Regular</option>
+            <option value="Date Night">Date Night</option>
+            <option value="Travelled Specifically">Travelled Specifically</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="av-location">Location *</label>
+        <input class="form-input" id="av-location" type="text" placeholder="e.g. Shoreditch, London" required autocomplete="off">
+      </div>
+      <hr class="form-divider">
+      <div class="form-group">
+        <div class="filter-label" style="margin-bottom:10px">Scores (1–10)</div>
+        <div class="score-grid">
+          <div class="score-input-group">
+            <label class="form-label" for="av-food">Food / Drinks</label>
+            <input class="score-number" id="av-food" type="number" min="1" max="10" step="1" value="7">
+          </div>
+          <div class="score-input-group">
+            <label class="form-label" for="av-service">Service</label>
+            <input class="score-number" id="av-service" type="number" min="1" max="10" step="1" value="7">
+          </div>
+          <div class="score-input-group">
+            <label class="form-label" for="av-experience">Experience</label>
+            <input class="score-number" id="av-experience" type="number" min="1" max="10" step="1" value="7">
+          </div>
+        </div>
+      </div>
+      <hr class="form-divider">
+      <div class="form-group">
+        <label class="form-label" for="av-liked">What I liked</label>
+        <textarea class="form-textarea" id="av-liked" placeholder="Describe what made this venue special…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="addVenueCancel">Cancel</button>
+      <button class="btn-submit" id="addVenueSubmit">
+        <div class="btn-submit-spinner"></div>
+        <span id="addVenueSubmitText">Add to map</span>
+      </button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -1009,6 +1362,8 @@ function parseCSV(csv) {
 }
 
 const venues = parseCSV(CSV_RAW);
+// Mark all CSV-sourced venues so we can distinguish them from user-added ones
+venues.forEach(function(v) { v._wasCSV = true; });
 
 // ── SHORT TYPE LABELS ──
 function shortType(t) {
@@ -1280,19 +1635,22 @@ function initGoogleMap() {
   });
 }
 
-function scoreColor(overall) {
-  if (overall >= 8.5) return 'green';
-  if (overall >= 7.0) return 'amber';
+function scoreColor(v) {
+  if (v >= 9) return 'silver';
+  if (v >= 7) return 'green';
+  if (v >= 5) return 'amber';
   return 'red';
 }
-function scoreColorHex(overall) {
-  if (overall >= 8.5) return '#2D8A56';
-  if (overall >= 7.0) return '#C08B2D';
+function scoreColorHex(v) {
+  if (v >= 9) return '#7D909F';
+  if (v >= 7) return '#2D8A56';
+  if (v >= 5) return '#C08B2D';
   return '#C44D3E';
 }
-function scoreColorVar(overall) {
-  if (overall >= 8.5) return 'var(--green)';
-  if (overall >= 7.0) return 'var(--amber)';
+function scoreColorVar(v) {
+  if (v >= 9) return 'var(--silver)';
+  if (v >= 7) return 'var(--green)';
+  if (v >= 5) return 'var(--amber)';
   return 'var(--red)';
 }
 
@@ -1428,9 +1786,9 @@ function renderList(filtered) {
         <span class="badge badge-location">${v.location}</span>
       </div>
       <div class="card-scores">
-        <span class="score-chip"><span class="score-dot ${scoreColor(v.food) === 'green' ? 'score-green' : scoreColor(v.food) === 'amber' ? 'score-amber' : 'score-red'}"></span>Food ${v.food}</span>
-        <span class="score-chip"><span class="score-dot ${scoreColor(v.service) === 'green' ? 'score-green' : scoreColor(v.service) === 'amber' ? 'score-amber' : 'score-red'}"></span>Svc ${v.service}</span>
-        <span class="score-chip"><span class="score-dot ${scoreColor(v.experience) === 'green' ? 'score-green' : scoreColor(v.experience) === 'amber' ? 'score-amber' : 'score-red'}"></span>Exp ${v.experience}</span>
+        <span class="score-chip"><span class="score-dot score-${scoreColor(v.food)}"></span>Food ${v.food}</span>
+        <span class="score-chip"><span class="score-dot score-${scoreColor(v.service)}"></span>Svc ${v.service}</span>
+        <span class="score-chip"><span class="score-dot score-${scoreColor(v.experience)}"></span>Exp ${v.experience}</span>
       </div>
       <div class="card-liked">${v.liked}</div>`;
     card.addEventListener('click', () => selectVenue(v));
@@ -1489,6 +1847,8 @@ function hashCode(s) {
 }
 
 function openDrawer(v) {
+  _drawerVenueRef = v;
+  document.getElementById('drawerDeleteConfirm').classList.remove('show');
   const drawer = document.getElementById('drawer');
   const overlay = document.getElementById('drawerOverlay');
   document.getElementById('drawerName').textContent = v.name;
@@ -1500,6 +1860,7 @@ function openDrawer(v) {
     <div class="drawer-badges">
       <span class="badge badge-type">${shortType(v.type)}</span>
       <span class="badge badge-reason">${v.reason}</span>
+      ${v._custom && !v._wasCSV ? '<span class="badge badge-custom">Added by you</span>' : v._custom && v._wasCSV ? '<span class="badge badge-modified">Modified</span>' : ''}
     </div>
     <div class="drawer-location">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -1592,7 +1953,7 @@ async function loadDrawerPhotos(v) {
 
 function scoreBarHTML(label, val) {
   const pct = (val / 10) * 100;
-  const color = val >= 8.5 ? 'var(--green)' : val >= 7 ? 'var(--amber)' : 'var(--red)';
+  const color = scoreColorVar(val);
   return `<div class="score-bar-row">
     <span class="score-bar-label">${label}</span>
     <div class="score-bar-track"><div class="score-bar-fill" style="width:${pct}%;background:${color}"></div></div>
@@ -1610,6 +1971,217 @@ function closeDrawer() {
 document.getElementById('drawerClose').addEventListener('click', closeDrawer);
 document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+
+// ── ADD / EDIT / DELETE VENUE ──
+const CUSTOM_VENUES_KEY = 'venueCustom';
+let editingVenue = null; // null = adding new, object ref = editing existing
+
+function loadCustomVenues() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CUSTOM_VENUES_KEY) || '[]');
+    saved.forEach(function(s) {
+      // If a saved venue matches an existing CSV venue by name, update it in-place
+      const existing = venues.find(function(v) { return v.name === s.name; });
+      if (existing) {
+        const wasCSV = existing._wasCSV;
+        Object.assign(existing, s);
+        existing._custom = true;
+        existing._wasCSV = wasCSV; // preserve original CSV flag
+      } else {
+        s._custom = true;
+        venues.push(s);
+      }
+    });
+  } catch(e) {}
+}
+
+function saveCustomVenues() {
+  try {
+    const custom = venues.filter(function(v) { return v._custom; });
+    // Strip runtime-only properties before saving
+    const toSave = custom.map(function(v) {
+      const copy = Object.assign({}, v);
+      delete copy._marker;
+      delete copy._infoWindow;
+      return copy;
+    });
+    localStorage.setItem(CUSTOM_VENUES_KEY, JSON.stringify(toSave));
+  } catch(e) {}
+}
+
+function openAddVenueModal(venueToEdit) {
+  editingVenue = venueToEdit || null;
+  const title = document.getElementById('addVenueModalTitle');
+  const submitText = document.getElementById('addVenueSubmitText');
+
+  if (editingVenue) {
+    title.textContent = 'Edit Venue';
+    submitText.textContent = 'Save changes';
+    // Pre-fill fields
+    document.getElementById('av-name').value = editingVenue.name;
+    document.getElementById('av-location').value = editingVenue.location;
+    document.getElementById('av-type').value = editingVenue.type;
+    document.getElementById('av-reason').value = editingVenue.reason;
+    document.getElementById('av-food').value = editingVenue.food;
+    document.getElementById('av-service').value = editingVenue.service;
+    document.getElementById('av-experience').value = editingVenue.experience;
+    document.getElementById('av-liked').value = editingVenue.liked || '';
+  } else {
+    title.textContent = 'Add Venue';
+    submitText.textContent = 'Add to map';
+    document.getElementById('av-name').value = '';
+    document.getElementById('av-location').value = '';
+    document.getElementById('av-liked').value = '';
+    document.getElementById('av-food').value = 7;
+    document.getElementById('av-service').value = 7;
+    document.getElementById('av-experience').value = 7;
+  }
+
+  setAddVenueLoading(false);
+  document.getElementById('addVenueOverlay').classList.add('open');
+  setTimeout(function() { document.getElementById('av-name').focus(); }, 50);
+}
+
+function closeAddVenueModal() {
+  document.getElementById('addVenueOverlay').classList.remove('open');
+  editingVenue = null;
+  setAddVenueLoading(false);
+}
+
+function setAddVenueLoading(loading) {
+  const btn = document.getElementById('addVenueSubmit');
+  const text = document.getElementById('addVenueSubmitText');
+  btn.disabled = loading;
+  btn.classList.toggle('loading', loading);
+  if (loading) text.textContent = 'Geocoding…';
+}
+
+function updateFiltersAfterChange() {
+  const allTypes = [...new Set(venues.map(function(v) { return shortType(v.type); }))];
+  const allReasons = [...new Set(venues.map(function(v) { return v.reason; }))];
+  renderPills(document.getElementById('typeFilters'), allTypes, state.activeTypes, applyFilters);
+  renderPills(document.getElementById('reasonFilters'), allReasons, state.activeReasons, applyFilters);
+}
+
+function deleteVenue(v) {
+  const idx = venues.indexOf(v);
+  if (idx !== -1) venues.splice(idx, 1);
+  // Clear its geo cache entry so it doesn't pollute
+  const key = v.name + ', ' + v.location;
+  delete geocodeCache[key];
+  saveGeoCache();
+  saveCustomVenues();
+  updateFiltersAfterChange();
+  closeDrawer();
+  applyFilters();
+}
+
+// ── Drawer edit / delete wiring ──
+let _drawerVenueRef = null;
+
+document.getElementById('drawerEditBtn').addEventListener('click', function() {
+  if (_drawerVenueRef) openAddVenueModal(_drawerVenueRef);
+});
+
+document.getElementById('drawerDeleteBtn').addEventListener('click', function() {
+  document.getElementById('drawerDeleteConfirm').classList.add('show');
+});
+
+document.getElementById('drawerDeleteNo').addEventListener('click', function() {
+  document.getElementById('drawerDeleteConfirm').classList.remove('show');
+});
+
+document.getElementById('drawerDeleteYes').addEventListener('click', function() {
+  document.getElementById('drawerDeleteConfirm').classList.remove('show');
+  if (_drawerVenueRef) deleteVenue(_drawerVenueRef);
+});
+
+// ── Add/Edit submit ──
+document.getElementById('addVenueBtn').addEventListener('click', function() { openAddVenueModal(); });
+document.getElementById('addVenueClose').addEventListener('click', closeAddVenueModal);
+document.getElementById('addVenueCancel').addEventListener('click', closeAddVenueModal);
+document.getElementById('addVenueOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeAddVenueModal();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && document.getElementById('addVenueOverlay').classList.contains('open')) {
+    closeAddVenueModal();
+  }
+});
+
+document.getElementById('addVenueSubmit').addEventListener('click', async function() {
+  const name = document.getElementById('av-name').value.trim();
+  const location = document.getElementById('av-location').value.trim();
+  const type = document.getElementById('av-type').value;
+  const reason = document.getElementById('av-reason').value;
+  const food = Math.min(10, Math.max(1, parseInt(document.getElementById('av-food').value) || 7));
+  const service = Math.min(10, Math.max(1, parseInt(document.getElementById('av-service').value) || 7));
+  const experience = Math.min(10, Math.max(1, parseInt(document.getElementById('av-experience').value) || 7));
+  const liked = document.getElementById('av-liked').value.trim();
+
+  if (!name) { document.getElementById('av-name').focus(); return; }
+  if (!location) { document.getElementById('av-location').focus(); return; }
+
+  const overall = Math.round(((food + service + experience) / 3) * 10) / 10;
+
+  setAddVenueLoading(true);
+
+  if (editingVenue) {
+    // ── EDIT existing venue ──
+    const locationChanged = editingVenue.location !== location || editingVenue.name !== name;
+
+    // Update in-place
+    editingVenue.name = name;
+    editingVenue.type = type;
+    editingVenue.location = location;
+    editingVenue.reason = reason;
+    editingVenue.food = food;
+    editingVenue.service = service;
+    editingVenue.experience = experience;
+    editingVenue.overall = overall;
+    editingVenue.liked = liked;
+    editingVenue._custom = true;
+
+    // Re-geocode if name or location changed
+    if (locationChanged) {
+      const oldKey = editingVenue.name + ', ' + editingVenue.location;
+      delete geocodeCache[oldKey];
+      editingVenue.coords = await geocodeVenue(editingVenue);
+      if (placesReady) {
+        delete photoCache[editingVenue.name + '|' + editingVenue.location];
+        savePhotoCache();
+        await getVenuePhotos(editingVenue);
+      }
+    }
+
+    saveCustomVenues();
+    updateFiltersAfterChange();
+    applyFilters(true);
+    closeAddVenueModal();
+
+    // Reopen drawer with updated data
+    setTimeout(function() { selectVenue(editingVenue); }, 100);
+
+  } else {
+    // ── ADD new venue ──
+    const newVenue = { name, type, location, reason, food, service, experience, overall, liked, _custom: true };
+    newVenue.coords = await geocodeVenue(newVenue);
+    if (placesReady) await getVenuePhotos(newVenue);
+
+    venues.push(newVenue);
+    saveCustomVenues();
+    updateFiltersAfterChange();
+    applyFilters();
+    closeAddVenueModal();
+
+    if (newVenue.coords && map) {
+      map.panTo({ lat: newVenue.coords[0], lng: newVenue.coords[1] });
+      if (map.getZoom() < 14) map.setZoom(14);
+      if (state.tab !== 'map') document.querySelector('[data-tab="map"]').click();
+      setTimeout(function() { selectVenue(newVenue); }, 400);
+    }
+  }
+});
 
 // ── GOOGLE MAPS API LOADER ──
 let googleMapsResolve;
@@ -1642,6 +2214,9 @@ window.onGoogleMapsReady = function() {
 
 // ── BOOT ──
 (async () => {
+  // Load any previously saved custom venues before anything else
+  loadCustomVenues();
+
   // First set fallbacks immediately for a fast first render
   venues.forEach(function(v) {
     var key = v.name + ', ' + v.location;

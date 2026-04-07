@@ -1278,62 +1278,10 @@ async function prefetchAllPhotos() {
   statusEl.classList.remove('active');
   console.log('[Venue Explorer] Photo prefetch complete');
 }
-// ── CSV DATA ──
+// ── CSV DATA — removed; all venues now live in Firestore ──
+// Kept as empty string so offline fallback parseCSV call returns [] gracefully
 const CSV_RAW = `Name,Type,Location,Reason,Food/Drinks,Service,Experience,What I liked
-A Wong,Fine Dining Restaurant (Tasting Menu),Pimlico,Special Occasion,10,8,8,"Incredible selection of dishes in the tasting menu, amazing variety and a phenomenal wine list. Setting was relaxed and not over the top, not too pretentious."
-Iris,Fine Dining Restaurant (Tasting Menu),Norway,Travelled Specifically,9,10,10,"Unbelievable location in the fjord, stunning journey and worth a trip specifically, remote, serene and scenic. Food was great with a fantastic focus on local produce."
-Black Swan,Fine Dining Restaurant (Tasting Menu),Oldstead,Travelled Specifically,9,9,10,"Great scenic location in a small north yorkshire village, fantastic focus on local produce and local staff, great menu based on seasonal produce. Great building in a converted pub and came with accomodation in the village which was great."
-Da Terra,Fine Dining Restaurant (Tasting Menu),Bethnal Green,Special Occasion,8,10,8,"Relaxed east london restaurant, fantastic food and great service with an open kitchen and the chefs presenting their dishes."
-Aulis,Fine Dining Restaurant (Tasting Menu),Soho,Special Occasion,8,10,9,"Chefs table experience, great service and ability to interact with the chefs in an intimate soho location."
-Sketch,Fine Dining Restaurant (Tasting Menu),Mayfair,Special Occasion,8,10,9,"Grand dining room with impeccable service in a mayfair location, amazing selection of food, particularly loved the grand desert."
-Quadri,Fine Dining Restaurant (Tasting Menu),Venice,Special Occasion,7,9,9,"Amazing location in a historic building off st marks square, strong food selection based on seasonal produce and good service."
-Hide,Fine Dining Restaurant (Tasting Menu),Mayfair,Nice Occasion,8,9,7,"Relaxed dining room, phenomenal wine list, strong menu"
-Blossom,Fine Dining Restaurant (Tasting Menu),Malaga,Nice Occasion,7,9,8,"Small, intimate setting with a good menu"
-CTC Urban Gastronomy,Fine Dining Restaurant (Tasting Menu),Athens,Nice Occasion,7,7,7,"Interesting and experimental selection of dishes"
-Luca,Fine Dining Restaurant (A La Carte),Farringdon,Nice Occasion,7,7,6,"Simple, relaxed amazing quality italian food"
-Behind,Fine Dining Restaurant (Tasting Menu),Bethnal Green,Nice Occasion,6,7,6,"Large, chefs table style food with strong seafood focus"
-Aniar,Fine Dining Restaurant (Tasting Menu),Galway,Nice Occasion,6,6,5,"Big focus on local produce and an interesting wine pairing"
-Umu,Fine Dining Restaurant (Tasting Menu),Mayfair,Nice Occasion,6,7,5,"High quality cooking but a bit samey"
-Galvin La Chappelle,Fine Dining Restaurant (A La Carte),City,Nice Occasion,6,6,6,"Good traditional dishes in a formal setting"
-Mountain,Fine Dining Restaurant (A La Carte),Soho,Nice Regular,7,6,7,"Relaxed chilled open fire cooking, amazing vibes and amazing flavours, keep going back"
-Oma,Fine Dining Restaurant (A La Carte),London,Nice Regular,7,6,8,"Relaxed chilled open fire cooking, sat and counter to watch them cook, amazing vibes and amazing flavours, keep going back"
-Kiln,Casual Dining,Soho,Nice Regular,6,5,8,"Relaxed soho barbecue spot for great small plates"
-Les 2 Garcons,Casual Dining,Crouch End,Nice Regular,6,6,7,"Traditional French done well, quaint vibes"
-Josette,Casual Dining,Farringdon,Nice Regular,6,5,6,"Traditional French done well, quaint vibes"
-Canalha,Casual Dining,Lisbon,Nice Regular,6,7,6,"Strong local dishes end to end"
-Lina Stores,Casual Dining,City,Casual Regular,5,4,5,"Great pasta"
-Zabala,Casual Dining,Vitoria Gastiez,Nice Regular,6,5,5,"Very good fish and wine"
-Los Feuros,Casual Dining,Bilbao,Nice Regular,5,5,6,"Good tasting menu of local fare"
-Oxamoco,Casual Dining,Greenpoint,Nice Regular,8,7,6,"Amazing mexican food in a relaxed setting"
-Le Coin Fracais,Fine Dining Restaurant (Tasting Menu),Franschoek,Nice Occasion,8,8,7,"fantastic tasting menu of south african local foods"
-Smoking Goat,Casual Dining,Shoreditch,Nice Regular,5,5,6,"Relaxed shoreditch barbecue spot for great small plates"
-Shankeys,Casual Dining,Hackney,Nice Regular,5,7,7,"Great cocktails and good mix of irish and indian foods"
-Skua,Casual Dining,Edinburgh,Nice Regular,7,7,6,"Amazing small plates in a relaxed basement and great cocktails"
-Berenjak,Casual Dining,Borough,Nice Regular,6,5,6,"Interesting persian food"
-Singburi,Casual Dining,Shoreditch,Nice Regular,6,5,5,"Authentic and tasty thai food"
-Le'Escargot,Casual Dining,Soho,Nice Regular,6,6,7,"Traditional french done well in a nice soho setting"
-Paradise,Casual Dining,Soho,Nice Regular,7,6,6,"Really interesting sri lankan dishes"
-My Neighbour the Dumplings,Casual Dining,Victoria Park,Casual Regular,5,5,7,"Relaxed, good cocktails and great dumplings"
-Brat,Casual Dining,Shoreditch,Nice Regular,5,4,4,"Decent food, poor service and poor lcoation"
-Elis,Casual Dining,Bethnal Green,Casual Regular,6,7,6,"Relaxed but high quality cooking"
-Elliots,Casual Dining,Bethnal Green,Nice Regular,6,6,6,"Delightful small places european joint in hackeny"
-La Merenda,Casual Dining,Nice,Casual Regular,5,7,8,"Great local french spot for traditional food in an intimate setting"
-Tatar Bunar,Casual Dining,Shoreditch,Casual Regular,7,6,6,"Very unique Ukranian Spot"
-Terre Bar De Vin,Wine Bar & Food,Paris,Nice Regular,7,9,9,"Wine bar, great vibes in a tiny setting, sat at counter and watched the chefs work, awesome wine and small plates"
-Bodegas Castañeda,Wine Bar & Food,Granada,Casual Regular,6,6,10,"Amazing local tapas spot doing authentique wines with accompanying tapas"
-Himkok,Cocktail Bar,Oslo,Special Occasion,10,10,10,"Best cocktail ive ever drank with impeccable service in a cool oslo lcoation"
-Satans Whiskers,Cocktail Bar,London,Nice Occasion,9,10,10,"Fantastic dive bar vibes but some of the best tasting cocktails"
-Dram,Cocktail Bar,London,Nice Occasion,8,7,7,"Not the best vibes but good cocktails"
-Bruno,Wine Bar,London,Date Night,7,7,7,"Beautiful intimate setting serving great wine and small plates"
-The Coral Room,Cocktail Bar,London,Date Night,7,8,6,"Grand hotel setting lacked vibe but did good cocktails"
-Lucys Flower Shop,Cocktail Bar,Stockholm,Special Occasion,9,9,10,"Hidden underground lcoations with a simple but knockout cocktail menu"
-Svanen,Cocktail Bar,Oslo,Special Occasion,8,9,8,"Funky location in a former chemists with great quality drinks and good service"
-Sin + Tax,Cocktail Bar,Johannesburg,Nice Occasion,8,8,8,"Good drinks and good casual food with an outdoor location and a chilled vibe"
-Gordons,Wine Bar,London,Nice Occasion,8,9,10,"Amazing location in the wine cellars and a great wine list, truly one of a kind"
-Authentique,Wine Bar,London,Nice Regular,6,7,6,"Fun local wine bar"
-St Swythns Wine Bar,Wine Bar,London,Nice Occasion,7,9,9,"incredible wine list and a fancy setting"
-The Booking Office,Cocktail Bar,London,Nice Regular,6,7,6,"grand setting with good drinks"
-Decimo,Cocktail Bar,London,Nice Regular,6,7,6,"Fun late night venue"`;
+placeholder,placeholder,placeholder,placeholder,0,0,0,placeholder`;
 
 // ── PARSE CSV ──
 function parseCSV(csv) {
@@ -1734,9 +1682,9 @@ function updateMarkers(filtered, skipFitBounds) {
           path: google.maps.SymbolPath.CIRCLE,
           scale: scale,
           fillColor: '#C45D3E',
-          fillOpacity: 1,
-          strokeColor: '#ffffff',
-          strokeWeight: 3,
+          fillOpacity: 0.25,
+          strokeColor: '#C45D3E',
+          strokeWeight: 1.5,
         },
         label: {
           text: String(count),

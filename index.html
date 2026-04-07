@@ -1378,9 +1378,7 @@ function parseCSV(csv) {
   return data;
 }
 
-const venues = parseCSV(CSV_RAW);
-// Mark all CSV-sourced venues so we can distinguish them from user-added ones
-venues.forEach(function(v) { v._wasCSV = true; });
+const venues = []; // populated from Firestore on boot; CSV_RAW used as seed fallback only
 
 // ── SHORT TYPE LABELS ──
 function shortType(t) {
@@ -1550,8 +1548,8 @@ const state = {
 };
 
 // ── INIT FILTERS ──
-const types = [...new Set(venues.map(v => shortType(v.type)))];
-const reasons = [...new Set(venues.map(v => v.reason))];
+function getTypes() { return [...new Set(venues.map(v => shortType(v.type)))]; }
+function getReasons() { return [...new Set(venues.map(v => v.reason))]; }
 
 function renderPills(container, items, stateSet, onChange) {
   container.innerHTML = '';
@@ -1612,8 +1610,8 @@ document.getElementById('resetBtn').addEventListener('click', () => {
     document.getElementById(k + 'Slider').value = 0;
     document.getElementById(k + 'Val').textContent = '0';
   });
-  renderPills(document.getElementById('typeFilters'), types, state.activeTypes, applyFilters);
-  renderPills(document.getElementById('reasonFilters'), reasons, state.activeReasons, applyFilters);
+  renderPills(document.getElementById('typeFilters'), getTypes(), state.activeTypes, applyFilters);
+  renderPills(document.getElementById('reasonFilters'), getReasons(), state.activeReasons, applyFilters);
   applyFilters();
 });
 
@@ -1877,7 +1875,7 @@ function openDrawer(v) {
     <div class="drawer-badges">
       <span class="badge badge-type">${shortType(v.type)}</span>
       <span class="badge badge-reason">${v.reason}</span>
-      ${v._custom && !v._wasCSV ? '<span class="badge badge-custom">Added by you</span>' : v._custom && v._wasCSV ? '<span class="badge badge-modified">Modified</span>' : ''}
+      ${v.source === 'user' ? '<span class="badge badge-custom">Added by you</span>' : ''}
     </div>
     <div class="drawer-location">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -2005,7 +2003,7 @@ function initFirebase() {
   }
 }
 
-function venueToFirestoreData(v) {
+function venueToFirestoreData(v, source) {
   return {
     name: v.name,
     type: v.type,
@@ -2017,50 +2015,82 @@ function venueToFirestoreData(v) {
     overall: v.overall,
     liked: v.liked || '',
     coords: v.coords || null,
+    source: source || v.source || 'user',
   };
 }
 
-function mergeVenueIntoArray(data) {
-  const existing = venues.find(function(v) { return v.name === data.name; });
-  if (existing) {
-    const wasCSV = existing._wasCSV;
-    Object.assign(existing, data);
-    existing._custom = true;
-    existing._wasCSV = wasCSV;
-  } else {
-    data._custom = true;
-    venues.push(data);
+async function seedVenuesToFirestore() {
+  const statusEl = document.getElementById('geocodeStatus');
+  const textEl = document.getElementById('geocodeText');
+  const mapMsg = document.getElementById('mapLoadingMsg');
+  statusEl.classList.add('active');
+
+  const csvVenues = parseCSV(CSV_RAW);
+  for (var i = 0; i < csvVenues.length; i++) {
+    const v = csvVenues[i];
+    const msg = 'Seeding venue ' + (i + 1) + '/' + csvVenues.length + '…';
+    textEl.textContent = msg;
+    if (mapMsg) mapMsg.textContent = msg;
+    v.coords = await geocodeVenue(v);
+    await new Promise(function(r) { setTimeout(r, 300); });
   }
+
+  const BATCH_SIZE = 400;
+  for (var b = 0; b < csvVenues.length; b += BATCH_SIZE) {
+    const batch = db.batch();
+    csvVenues.slice(b, b + BATCH_SIZE).forEach(function(v) {
+      const ref = db.collection('venues').doc();
+      v._firestoreId = ref.id;
+      v.source = 'csv';
+      batch.set(ref, venueToFirestoreData(v, 'csv'));
+    });
+    await batch.commit();
+  }
+
+  csvVenues.forEach(function(v) { venues.push(v); });
+  statusEl.classList.remove('active');
+  console.log('[Venue Explorer] Seeded ' + csvVenues.length + ' venues to Firestore');
 }
 
-async function loadCustomVenues() {
-  // ── Try Firestore first ──
+async function loadAllVenues() {
   if (db) {
     try {
       const snapshot = await db.collection('venues').get();
-      snapshot.forEach(function(doc) {
-        const data = doc.data();
-        data._firestoreId = doc.id;
-        mergeVenueIntoArray(data);
-      });
-      // Mirror to localStorage as offline cache
-      saveLocalCache();
+      if (!snapshot.empty) {
+        snapshot.forEach(function(doc) {
+          const data = doc.data();
+          data._firestoreId = doc.id;
+          venues.push(data);
+        });
+        saveLocalCache();
+        updateFiltersAfterChange();
+        return;
+      }
+      // Firestore empty — seed from CSV (first-time setup)
+      await seedVenuesToFirestore();
+      updateFiltersAfterChange();
       return;
     } catch(e) {
-      console.warn('[Venue Explorer] Firestore load failed, using local cache:', e);
+      console.warn('[Venue Explorer] Firestore load failed, using CSV fallback:', e);
     }
   }
-  // ── Fallback: localStorage cache ──
+  // No Firebase / failed — parse CSV directly + merge any local saves
+  parseCSV(CSV_RAW).forEach(function(v) { v.source = 'csv'; venues.push(v); });
   try {
     const saved = JSON.parse(localStorage.getItem(CUSTOM_VENUES_KEY) || '[]');
-    saved.forEach(mergeVenueIntoArray);
+    saved.forEach(function(s) {
+      const existing = venues.find(function(v) { return v.name === s.name; });
+      if (existing) { Object.assign(existing, s); } else { venues.push(s); }
+    });
   } catch(e) {}
+  updateFiltersAfterChange();
 }
+
+function loadCustomVenues() { return loadAllVenues(); }
 
 function saveLocalCache() {
   try {
-    const custom = venues.filter(function(v) { return v._custom; });
-    const toSave = custom.map(function(v) {
+    const toSave = venues.map(function(v) {
       const copy = Object.assign({}, v);
       delete copy._marker;
       delete copy._infoWindow;
@@ -2147,10 +2177,8 @@ function setAddVenueLoading(loading) {
 }
 
 function updateFiltersAfterChange() {
-  const allTypes = [...new Set(venues.map(function(v) { return shortType(v.type); }))];
-  const allReasons = [...new Set(venues.map(function(v) { return v.reason; }))];
-  renderPills(document.getElementById('typeFilters'), allTypes, state.activeTypes, applyFilters);
-  renderPills(document.getElementById('reasonFilters'), allReasons, state.activeReasons, applyFilters);
+  renderPills(document.getElementById('typeFilters'), getTypes(), state.activeTypes, applyFilters);
+  renderPills(document.getElementById('reasonFilters'), getReasons(), state.activeReasons, applyFilters);
 }
 
 function deleteVenue(v) {
@@ -2230,7 +2258,7 @@ document.getElementById('addVenueSubmit').addEventListener('click', async functi
     editingVenue.experience = experience;
     editingVenue.overall = overall;
     editingVenue.liked = liked;
-    editingVenue._custom = true;
+    // preserve source — editing a csv venue keeps it as csv, user venue stays user
 
     // Re-geocode if name or location changed
     if (locationChanged) {
@@ -2254,7 +2282,7 @@ document.getElementById('addVenueSubmit').addEventListener('click', async functi
 
   } else {
     // ── ADD new venue ──
-    const newVenue = { name, type, location, reason, food, service, experience, overall, liked, _custom: true };
+    const newVenue = { name, type, location, reason, food, service, experience, overall, liked, source: 'user' };
     newVenue.coords = await geocodeVenue(newVenue);
     if (placesReady) await getVenuePhotos(newVenue);
 
@@ -2304,12 +2332,21 @@ window.onGoogleMapsReady = function() {
 
 // ── BOOT ──
 (async () => {
-  // Initialise Firebase and load shared venues before anything else
-  initFirebase();
-  await loadCustomVenues();
+  const loadingOverlay = document.getElementById('mapLoading');
+  const loadingMsg = document.getElementById('mapLoadingMsg');
 
-  // First set fallbacks immediately for a fast first render
+  // Load Google Maps first (geocoding needed for Firestore seeding)
+  initFirebase();
+  loadGoogleMapsAPI();
+  await googleMapsLoaded;
+
+  // Load all venues from Firestore (seeds from CSV if empty)
+  loadingMsg.textContent = 'Loading venues…';
+  await loadAllVenues();
+
+  // Apply fallback coords for any venue still missing them
   venues.forEach(function(v) {
+    if (v.coords) return;
     var key = v.name + ', ' + v.location;
     if (geocodeCache[key]) {
       v.coords = geocodeCache[key];
@@ -2322,13 +2359,7 @@ window.onGoogleMapsReady = function() {
     }
   });
 
-  // Load Google Maps API and wait for it
-  const loadingOverlay = document.getElementById('mapLoading');
-  const loadingMsg = document.getElementById('mapLoadingMsg');
-  loadGoogleMapsAPI();
-  await googleMapsLoaded;
-
-  // Now geocode with Google Places (much more accurate)
+  // Geocode any still missing (new user-added venues without stored coords)
   loadingMsg.textContent = 'Geocoding venues…';
   await geocodeAll();
   applyFilters();

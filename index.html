@@ -939,6 +939,54 @@ input[type="range"]::-moz-range-thumb {
 .badge-custom { background: #FDF0EC; color: var(--accent); }
 .badge-modified { background: #FFF8E8; color: var(--amber); }
 
+/* ── ENRICHMENT STYLES ── */
+.accolade-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.accolade {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  font-size: 12px; font-weight: 600;
+}
+.accolade-michelin { background: #FDF0EC; color: #C45D3E; border: 1px solid #F5C5B5; }
+.accolade-w50 { background: #EDE9FE; color: #6D28D9; border: 1px solid #C4B5FD; }
+.accolade img { width: 14px; height: 14px; object-fit: contain; }
+
+.enrichment-meta { display: flex; gap: 14px; flex-wrap: wrap; }
+.enrichment-meta-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); }
+.enrichment-meta-item strong { color: var(--text-primary); font-weight: 600; }
+
+.review-summary {
+  font-size: 13px; color: var(--text-secondary);
+  line-height: 1.65; font-style: italic;
+}
+
+.review-extracts { display: flex; flex-direction: column; gap: 8px; }
+.review-extract {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px; color: var(--text-secondary);
+  line-height: 1.55;
+}
+.review-extract strong { color: var(--text-primary); font-weight: 600; display: block; margin-bottom: 2px; }
+
+.enriching-notice {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--text-tertiary);
+  padding: 8px 12px;
+  background: var(--border-light);
+  border-radius: var(--radius-md);
+}
+.enriching-spinner {
+  width: 10px; height: 10px; flex-shrink: 0;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
 /* Form divider */
 .form-divider {
   border: none;
@@ -1821,16 +1869,53 @@ function openDrawer(v) {
   const body = document.getElementById('drawerBody');
   const mapsQ = encodeURIComponent(`${v.name} ${v.location}`);
 
+  // ── Build enrichment blocks ──
+  const accolades = [];
+  if (v.michelin && v.michelin.listed) {
+    const stars = v.michelin.stars > 0 ? ' ' + '★'.repeat(v.michelin.stars) : ' Bib Gourmand';
+    accolades.push(`<div class="accolade accolade-michelin">🍽️ Michelin${stars}</div>`);
+  }
+  if (v.worlds50best && v.worlds50best.listed) {
+    const rank = v.worlds50best.rank ? ` #${v.worlds50best.rank}` : '';
+    accolades.push(`<div class="accolade accolade-w50">🌍 World's 50 Best${rank}</div>`);
+  }
+
+  const metaItems = [];
+  if (v.cuisineStyle) metaItems.push(`<div class="enrichment-meta-item"><strong>${v.cuisineStyle}</strong></div>`);
+  if (v.priceRange) metaItems.push(`<div class="enrichment-meta-item">💰 <strong>${v.priceRange}</strong></div>`);
+
+  const extractsHTML = (v.reviewExtracts && v.reviewExtracts.length)
+    ? v.reviewExtracts.map(e => {
+        const split = e.indexOf(':');
+        if (split > -1) {
+          const source = e.substring(0, split).trim();
+          const quote = e.substring(split + 1).trim();
+          return `<div class="review-extract"><strong>${source}</strong>${quote}</div>`;
+        }
+        return `<div class="review-extract">${e}</div>`;
+      }).join('')
+    : '';
+
+  const enrichingNotice = (!v.enriched && v.source === 'user')
+    ? `<div class="enriching-notice"><div class="enriching-spinner"></div>Enriching venue data — check back shortly</div>`
+    : '';
+
   body.innerHTML = `
     <div class="drawer-badges">
       <span class="badge badge-type">${shortType(v.type)}</span>
       <span class="badge badge-reason">${v.reason}</span>
       ${v.source === 'user' ? '<span class="badge badge-custom">Added by you</span>' : ''}
     </div>
+
     <div class="drawer-location">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
       ${v.location}
+      ${v.priceRange ? `<span style="margin-left:8px;color:var(--text-tertiary)">${v.priceRange}</span>` : ''}
     </div>
+
+    ${accolades.length ? `<div class="accolade-row">${accolades.join('')}</div>` : ''}
+    ${metaItems.length ? `<div class="enrichment-meta">${metaItems.join('')}</div>` : ''}
+    ${enrichingNotice}
 
     <div class="drawer-section-label">Scores</div>
     <div class="score-breakdown">
@@ -1845,6 +1930,21 @@ function openDrawer(v) {
       <div class="note-text">${v.liked}</div>
     </div>
 
+    ${v.reviewSummary ? `
+    <div class="drawer-section-label">Critics say</div>
+    <div class="review-summary">${v.reviewSummary}</div>
+    ` : ''}
+
+    ${extractsHTML ? `
+    <div class="drawer-section-label">Review extracts</div>
+    <div class="review-extracts">${extractsHTML}</div>
+    ` : ''}
+
+    ${v.knownFor ? `
+    <div class="drawer-section-label">Known for</div>
+    <div style="font-size:13px;color:var(--text-secondary);line-height:1.55">${v.knownFor}</div>
+    ` : ''}
+
     <div class="drawer-section-label">Photos</div>
     <div class="drawer-photos" id="drawerPhotos">
       <div class="drawer-photo hero"><div class="photo-shimmer"></div></div>
@@ -1854,11 +1954,16 @@ function openDrawer(v) {
 
     <div class="drawer-section-label">Links</div>
     <div class="drawer-links">
-      <a class="drawer-link" href="https://www.google.com/maps/search/?api=1&query=${mapsQ}" target="_blank" rel="noopener" aria-label="Open ${v.name} in Google Maps">
+      ${v.website ? `
+      <a class="drawer-link" href="${v.website}" target="_blank" rel="noopener">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        Official website
+      </a>` : ''}
+      <a class="drawer-link" href="https://www.google.com/maps/search/?api=1&query=${mapsQ}" target="_blank" rel="noopener">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
         Open in Google Maps
       </a>
-      <a class="drawer-link" href="https://www.google.com/search?q=${mapsQ}" target="_blank" rel="noopener" aria-label="Search for ${v.name} on Google">
+      <a class="drawer-link" href="https://www.google.com/search?q=${mapsQ}" target="_blank" rel="noopener">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         Search on Google
       </a>

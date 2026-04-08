@@ -9,6 +9,7 @@
 <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
 <style>
 :root {
   --font-display: 'Fraunces', Georgia, serif;
@@ -722,6 +723,163 @@ input[type="range"]::-moz-range-thumb {
   margin-bottom: -8px;
 }
 
+/* ── AI SEARCH PANEL ── */
+.ai-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+}
+.ai-search-wrap {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.ai-search-icon {
+  position: absolute;
+  left: 11px;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.ai-search-input {
+  width: 100%;
+  padding: 9px 12px 9px 36px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.ai-search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+.ai-search-btn {
+  padding: 9px 18px;
+  border: none;
+  border-radius: var(--radius-pill);
+  font-size: 13px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  transition: background var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ai-search-btn:hover { background: var(--accent-hover); }
+.ai-search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.ai-search-btn-spinner {
+  width: 12px; height: 12px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+}
+.ai-search-btn.loading .ai-search-btn-spinner { display: block; }
+.ai-search-btn.loading .ai-search-btn-text { display: none; }
+
+/* Results panel */
+.ai-results-panel {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  padding: 0 20px;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 400ms cubic-bezier(0.4,0,0.2,1), padding 400ms ease;
+}
+.ai-results-panel.open {
+  max-height: 600px;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+.ai-results-panel::-webkit-scrollbar { width: 4px; }
+.ai-results-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.ai-results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.ai-results-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.ai-results-summary {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  font-style: italic;
+  margin-top: 2px;
+}
+.ai-results-close {
+  border: none; background: none; cursor: pointer;
+  color: var(--text-tertiary); padding: 4px;
+  transition: color var(--transition);
+}
+.ai-results-close:hover { color: var(--red); }
+
+.ai-rec-list { display: flex; flex-direction: column; gap: 10px; }
+.ai-rec-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition);
+  background: var(--bg);
+}
+.ai-rec-card:hover { border-color: var(--accent); background: var(--accent-light); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.ai-rec-rank {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  width: 28px;
+  flex-shrink: 0;
+  line-height: 1;
+  padding-top: 2px;
+}
+.ai-rec-body { flex: 1; min-width: 0; }
+.ai-rec-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+.ai-rec-meta {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-bottom: 6px;
+}
+.ai-rec-rationale {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+.ai-error {
+  font-size: 13px;
+  color: var(--red);
+  padding: 8px 12px;
+  background: var(--red-bg);
+  border-radius: var(--radius-md);
+}
+
 /* MOBILE */
 @media (max-width: 768px) {
   .sidebar { display: none; }
@@ -1123,6 +1281,19 @@ input[type="range"]::-moz-range-thumb {
         <option value="experience">Sort: Experience</option>
       </select>
     </div>
+    <!-- AI SEARCH BAR -->
+    <div class="ai-search-bar">
+      <div class="ai-search-wrap">
+        <svg class="ai-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 8v4l3 3"/></svg>
+        <input class="ai-search-input" id="aiSearchInput" type="text" placeholder="Describe what you're looking for… e.g. romantic date night with great cocktails" autocomplete="off">
+      </div>
+      <button class="ai-search-btn" id="aiSearchBtn">
+        <div class="ai-search-btn-spinner"></div>
+        <span class="ai-search-btn-text">Ask AI</span>
+      </button>
+    </div>
+    <div class="ai-results-panel" id="aiResultsPanel"></div>
+
     <div class="map-container" id="mapContainer">
       <div id="map"></div>
       <div class="map-loading" id="mapLoading">
@@ -2355,6 +2526,93 @@ document.getElementById('addVenueSubmit').addEventListener('click', async functi
     }
   }
 });
+
+// ── AI VENUE SEARCH ──
+(function() {
+  const input = document.getElementById('aiSearchInput');
+  const btn = document.getElementById('aiSearchBtn');
+  const panel = document.getElementById('aiResultsPanel');
+
+  function setLoading(on) {
+    btn.disabled = on;
+    btn.classList.toggle('loading', on);
+  }
+
+  function showError(msg) {
+    panel.innerHTML = `<div class="ai-error">${msg}</div>`;
+    panel.classList.add('open');
+  }
+
+  function renderResults(data) {
+    const recs = data.recommendations || [];
+    if (!recs.length) { showError('No recommendations found — try a different description.'); return; }
+
+    const cards = recs.map(rec => {
+      const v = rec.venue || {};
+      const overall = v.overall !== undefined ? `${v.overall}/10` : '';
+      const meta = [v.location, v.cuisineStyle, overall].filter(Boolean).join(' · ');
+      return `
+        <div class="ai-rec-card" data-name="${rec.name}">
+          <div class="ai-rec-rank">${rec.rank}</div>
+          <div class="ai-rec-body">
+            <div class="ai-rec-name">${rec.name}</div>
+            ${meta ? `<div class="ai-rec-meta">${meta}</div>` : ''}
+            <div class="ai-rec-rationale">${rec.rationale}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+    panel.innerHTML = `
+      <div class="ai-results-header">
+        <div>
+          <div class="ai-results-title">Top recommendations</div>
+          ${data.summary ? `<div class="ai-results-summary">${data.summary}</div>` : ''}
+        </div>
+        <button class="ai-results-close" id="aiResultsClose" aria-label="Close recommendations">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="ai-rec-list">${cards}</div>`;
+
+    panel.classList.add('open');
+
+    document.getElementById('aiResultsClose').addEventListener('click', function() {
+      panel.classList.remove('open');
+    });
+
+    panel.querySelectorAll('.ai-rec-card').forEach(function(card) {
+      card.addEventListener('click', function() {
+        const name = card.dataset.name;
+        const venue = venues.find(function(v) { return v.name === name; });
+        if (venue) selectVenue(venue);
+      });
+    });
+  }
+
+  async function runSearch() {
+    const query = input.value.trim();
+    if (!query) { input.focus(); return; }
+
+    setLoading(true);
+    panel.classList.remove('open');
+
+    try {
+      const recommendVenues = firebase.functions().httpsCallable('recommendVenues');
+      const result = await recommendVenues({ query });
+      renderResults(result.data);
+    } catch(e) {
+      console.error('AI search error:', e);
+      showError('Something went wrong — please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  btn.addEventListener('click', runSearch);
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') runSearch();
+  });
+})();
 
 // ── GOOGLE MAPS API LOADER ──
 let googleMapsResolve;

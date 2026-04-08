@@ -724,16 +724,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ── AI SEARCH PANEL ── */
-.ai-search-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-}
 .ai-search-wrap {
-  flex: 1;
   position: relative;
   display: flex;
   align-items: center;
@@ -792,16 +783,13 @@ input[type="range"]::-moz-range-thumb {
 
 /* Results panel */
 .ai-results-panel {
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-  padding: 0 20px;
   max-height: 0;
   overflow: hidden;
-  transition: max-height 400ms cubic-bezier(0.4,0,0.2,1), padding 400ms ease;
+  transition: max-height 400ms cubic-bezier(0.4,0,0.2,1), margin-top 400ms ease;
 }
 .ai-results-panel.open {
-  max-height: 600px;
-  padding: 16px 20px;
+  max-height: 800px;
+  margin-top: 10px;
   overflow-y: auto;
 }
 .ai-results-panel::-webkit-scrollbar { width: 4px; }
@@ -1229,6 +1217,20 @@ input[type="range"]::-moz-range-thumb {
       </div>
     </div>
 
+    <!-- AI Search -->
+    <div class="filter-section">
+      <div class="filter-label">Ask AI</div>
+      <div class="ai-search-wrap">
+        <svg class="ai-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 8v4l3 3"/></svg>
+        <input class="ai-search-input" id="aiSearchInput" type="text" placeholder="e.g. romantic cocktail bar…" autocomplete="off">
+      </div>
+      <button class="ai-search-btn" id="aiSearchBtn" style="width:100%;margin-top:8px;justify-content:center">
+        <div class="ai-search-btn-spinner"></div>
+        <span class="ai-search-btn-text">Get recommendations</span>
+      </button>
+      <div class="ai-results-panel" id="aiResultsPanel"></div>
+    </div>
+
     <!-- Type -->
     <div class="filter-section">
       <div class="filter-label">Type</div>
@@ -1281,19 +1283,6 @@ input[type="range"]::-moz-range-thumb {
         <option value="experience">Sort: Experience</option>
       </select>
     </div>
-    <!-- AI SEARCH BAR -->
-    <div class="ai-search-bar">
-      <div class="ai-search-wrap">
-        <svg class="ai-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 8v4l3 3"/></svg>
-        <input class="ai-search-input" id="aiSearchInput" type="text" placeholder="Describe what you're looking for… e.g. romantic date night with great cocktails" autocomplete="off">
-      </div>
-      <button class="ai-search-btn" id="aiSearchBtn">
-        <div class="ai-search-btn-spinner"></div>
-        <span class="ai-search-btn-text">Ask AI</span>
-      </button>
-    </div>
-    <div class="ai-results-panel" id="aiResultsPanel"></div>
-
     <div class="map-container" id="mapContainer">
       <div id="map"></div>
       <div class="map-loading" id="mapLoading">

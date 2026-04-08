@@ -781,17 +781,17 @@ input[type="range"]::-moz-range-thumb {
 .ai-search-btn.loading .ai-search-btn-spinner { display: block; }
 .ai-search-btn.loading .ai-search-btn-text { display: none; }
 
-/* Results panel */
+/* Results panel — full pane in main area */
 .ai-results-panel {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 400ms cubic-bezier(0.4,0,0.2,1), margin-top 400ms ease;
-}
-.ai-results-panel.open {
-  max-height: 800px;
-  margin-top: 10px;
+  display: none;
+  flex: 1;
   overflow-y: auto;
+  padding: 24px 28px;
+  background: var(--bg);
 }
+.ai-results-panel.open { display: block; }
+.ai-results-panel::-webkit-scrollbar { width: 6px; }
+.ai-results-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
 .ai-results-panel::-webkit-scrollbar { width: 4px; }
 .ai-results-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
@@ -1277,7 +1277,6 @@ input[type="range"]::-moz-range-thumb {
         <div class="ai-search-btn-spinner"></div>
         <span class="ai-search-btn-text">Get recommendations</span>
       </button>
-      <div class="ai-results-panel" id="aiResultsPanel"></div>
     </div>
 
     <!-- Type -->
@@ -1332,6 +1331,7 @@ input[type="range"]::-moz-range-thumb {
         <option value="experience">Sort: Experience</option>
       </select>
     </div>
+    <div class="ai-results-panel" id="aiResultsPanel"></div>
     <div class="map-container" id="mapContainer">
       <div id="map"></div>
       <div class="map-loading" id="mapLoading">
@@ -2594,6 +2594,26 @@ document.getElementById('addVenueSubmit').addEventListener('click', async functi
   const input = document.getElementById('aiSearchInput');
   const btn = document.getElementById('aiSearchBtn');
   const panel = document.getElementById('aiResultsPanel');
+  const mapContainer = document.getElementById('mapContainer');
+  const listContainer = document.getElementById('listContainer');
+
+  function showMainPane() {
+    panel.classList.remove('open');
+    // Restore whichever tab was active
+    if (state.tab === 'map') {
+      mapContainer.classList.remove('hidden');
+      listContainer.classList.add('hidden');
+    } else {
+      mapContainer.classList.add('hidden');
+      listContainer.classList.remove('hidden');
+    }
+  }
+
+  function showResultsPane() {
+    mapContainer.classList.add('hidden');
+    listContainer.classList.add('hidden');
+    panel.classList.add('open');
+  }
 
   function setLoading(on) {
     btn.disabled = on;
@@ -2602,23 +2622,29 @@ document.getElementById('addVenueSubmit').addEventListener('click', async functi
 
   function showError(msg) {
     panel.innerHTML = `<div class="ai-error">${msg}</div>`;
-    panel.classList.add('open');
+    showResultsPane();
   }
 
-  function renderResults(data) {
+  function renderResults(data, query) {
     const recs = data.recommendations || [];
     if (!recs.length) { showError('No recommendations found — try a different description.'); return; }
 
     const cards = recs.map(rec => {
       const v = rec.venue || {};
       const overall = v.overall !== undefined ? `${v.overall}/10` : '';
-      const meta = [v.location, v.cuisineStyle, overall].filter(Boolean).join(' · ');
+      const badges = [
+        v.cuisineStyle ? `<span class="badge badge-type">${v.cuisineStyle}</span>` : '',
+        v.priceRange ? `<span class="badge badge-location">${v.priceRange}</span>` : '',
+        v.michelin && v.michelin.listed ? `<span class="badge" style="background:#FDF0EC;color:#C45D3E">🍽️ Michelin</span>` : '',
+        v.worlds50best && v.worlds50best.listed ? `<span class="badge" style="background:#EDE9FE;color:#6D28D9">🌍 50 Best</span>` : '',
+      ].filter(Boolean).join('');
       return `
         <div class="ai-rec-card" data-name="${rec.name}">
           <div class="ai-rec-rank">${rec.rank}</div>
           <div class="ai-rec-body">
             <div class="ai-rec-name">${rec.name}</div>
-            ${meta ? `<div class="ai-rec-meta">${meta}</div>` : ''}
+            <div class="ai-rec-meta">${v.location || ''}${overall ? ' · ' + overall : ''}</div>
+            ${badges ? `<div class="card-meta" style="margin-bottom:8px">${badges}</div>` : ''}
             <div class="ai-rec-rationale">${rec.rationale}</div>
           </div>
         </div>`;
@@ -2627,26 +2653,24 @@ document.getElementById('addVenueSubmit').addEventListener('click', async functi
     panel.innerHTML = `
       <div class="ai-results-header">
         <div>
-          <div class="ai-results-title">Top recommendations</div>
+          <div class="ai-results-title">Top picks for "${query}"</div>
           ${data.summary ? `<div class="ai-results-summary">${data.summary}</div>` : ''}
         </div>
-        <button class="ai-results-close" id="aiResultsClose" aria-label="Close recommendations">
+        <button class="ai-results-close" id="aiResultsClose" aria-label="Back to map">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
       <div class="ai-rec-list">${cards}</div>`;
 
-    panel.classList.add('open');
+    showResultsPane();
 
-    document.getElementById('aiResultsClose').addEventListener('click', function() {
-      panel.classList.remove('open');
-    });
+    document.getElementById('aiResultsClose').addEventListener('click', showMainPane);
 
     panel.querySelectorAll('.ai-rec-card').forEach(function(card) {
       card.addEventListener('click', function() {
         const name = card.dataset.name;
         const venue = venues.find(function(v) { return v.name === name; });
-        if (venue) selectVenue(venue);
+        if (venue) { showMainPane(); selectVenue(venue); }
       });
     });
   }
@@ -2656,12 +2680,11 @@ document.getElementById('addVenueSubmit').addEventListener('click', async functi
     if (!query) { input.focus(); return; }
 
     setLoading(true);
-    panel.classList.remove('open');
 
     try {
       const recommendVenues = firebase.functions().httpsCallable('recommendVenues');
       const result = await recommendVenues({ query });
-      renderResults(result.data);
+      renderResults(result.data, query);
     } catch(e) {
       console.error('AI search error:', e);
       showError('Something went wrong — please try again.');

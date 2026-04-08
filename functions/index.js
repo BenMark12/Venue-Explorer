@@ -47,12 +47,10 @@ exports.enrichVenueOnCreate = functions
     if (venue.source !== 'user') return null;
     if (venue.enriched) return null;
 
-    const apiKey = functions.config().anthropic
-      ? functions.config().anthropic.api_key
-      : null;
+    const apiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!apiKey) {
-      console.error('No Anthropic API key configured. Run: firebase functions:config:set anthropic.api_key="YOUR_KEY"');
+      console.error('No Anthropic API key configured. Add ANTHROPIC_API_KEY to functions/.env');
       return null;
     }
 

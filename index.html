@@ -869,12 +869,57 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* MOBILE */
+/* ── MOBILE FILTER TOGGLE ── */
+.mobile-filter-btn {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  font-size: 12.5px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  background: var(--bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.mobile-filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+.mobile-filter-btn.active { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }
+
 @media (max-width: 768px) {
-  .sidebar { display: none; }
   .header-tagline { display: none; }
+  .mobile-filter-btn { display: flex; }
   --drawer-w: 100vw;
   .drawer { width: 100vw; }
   .list-container { grid-template-columns: 1fr; }
+
+  /* Sidebar becomes a top-down overlay panel */
+  .sidebar {
+    display: flex;
+    position: fixed;
+    top: var(--header-h);
+    left: 0;
+    right: 0;
+    width: 100%;
+    min-width: 0;
+    max-height: 0;
+    overflow: hidden;
+    z-index: 1500;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    transition: max-height 350ms cubic-bezier(0.4,0,0.2,1);
+    padding: 0 18px;
+    gap: 0;
+  }
+  .sidebar.mobile-open {
+    max-height: 80vh;
+    overflow-y: auto;
+    padding: 20px 18px;
+    gap: 18px;
+  }
 }
 
 /* ── ADD VENUE BUTTON ── */
@@ -1191,6 +1236,10 @@ input[type="range"]::-moz-range-thumb {
     <div class="header-tagline">Find your best meals & drinks by mood and score</div>
   </div>
   <div class="header-right">
+    <button class="mobile-filter-btn" id="mobileFilterBtn" aria-label="Toggle filters">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+      Filters
+    </button>
     <div id="geocodeStatus" class="geocode-status">
       <div class="geocode-spinner"></div>
       <span id="geocodeText">Geocoding…</span>
@@ -2201,6 +2250,30 @@ function closeDrawer() {
 document.getElementById('drawerClose').addEventListener('click', closeDrawer);
 document.getElementById('drawerOverlay').addEventListener('click', closeDrawer);
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDrawer(); });
+
+// ── MOBILE FILTER PANEL ──
+(function() {
+  const btn = document.getElementById('mobileFilterBtn');
+  const sidebar = document.querySelector('.sidebar');
+  if (!btn || !sidebar) return;
+
+  btn.addEventListener('click', function() {
+    const isOpen = sidebar.classList.toggle('mobile-open');
+    btn.classList.toggle('active', isOpen);
+    btn.querySelector('span') && (btn.querySelector('span').textContent = isOpen ? 'Close' : 'Filters');
+  });
+
+  // Close sidebar when a filter pill or reset button is tapped on mobile
+  sidebar.addEventListener('click', function(e) {
+    if (window.innerWidth > 768) return;
+    if (e.target.closest('.pill-btn') || e.target.closest('.reset-btn')) {
+      setTimeout(function() {
+        sidebar.classList.remove('mobile-open');
+        btn.classList.remove('active');
+      }, 150);
+    }
+  });
+})();
 
 // ── ADD / EDIT / DELETE VENUE ──
 const CUSTOM_VENUES_KEY = 'venueCustom';

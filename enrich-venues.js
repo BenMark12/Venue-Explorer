@@ -75,8 +75,16 @@ async function enrichVenue(doc) {
     messages: [{ role: 'user', content: prompt }]
   });
 
-  const raw = message.content[0].text.trim();
-  const enrichment = JSON.parse(raw);
+  let raw = message.content[0].text.trim();
+  // Strip markdown code fences if present (```json ... ``` or ``` ... ```)
+  raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+  let enrichment;
+  try {
+    enrichment = JSON.parse(raw);
+  } catch(parseErr) {
+    console.error('Raw response was:', raw);
+    throw new Error('JSON parse failed: ' + parseErr.message);
+  }
 
   await doc.ref.update({
     ...enrichment,

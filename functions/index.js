@@ -65,7 +65,8 @@ exports.enrichVenueOnCreate = onDocumentCreated('venues/{venueId}', async (event
       messages: [{ role: 'user', content: ENRICHMENT_PROMPT(venue.name, venue.type, venue.location) }]
     });
 
-    const raw = message.content[0].text.trim();
+    let raw = message.content[0].text.trim();
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
     const enrichment = JSON.parse(raw);
 
     await snap.ref.update({
